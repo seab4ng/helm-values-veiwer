@@ -61,7 +61,7 @@
   .tree-node:hover .tree-del{opacity:1;}
   .tree-del:hover{background:#3d1416;color:var(--red);}
 
-  .tree-actions{padding:8px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
+  .tree-actions{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
   .tree-action-row{display:flex;align-items:center;gap:8px;}
   .tree-action-row .btn{flex:1;text-align:center;font-size:11px;padding:5px 8px;}
   .tree-action-hint{font-size:10px;color:var(--text3);text-align:center;}
@@ -203,6 +203,13 @@
     <!-- Left: tree panel -->
     <div class="tree-panel">
       <div class="tree-panel-hdr">Chart dependency tree</div>
+      <div class="tree-actions">
+        <div class="tree-action-row">
+          <button class="btn btn-primary" id="add-btn">+ Add values file</button>
+          <button class="btn btn-primary" id="add-chart-btn">+ Add chart</button>
+        </div>
+        <div class="tree-action-hint">Values file = single yaml &nbsp;|&nbsp; Chart = folder with subchart tree</div>
+      </div>
       <div class="tree-search">
         <div class="search-wrap">
           <span class="search-icon">&#128269;</span>
@@ -211,13 +218,6 @@
         </div>
       </div>
       <div class="tree-content" id="tree"></div>
-      <div class="tree-actions">
-        <div class="tree-action-row">
-          <button class="btn btn-primary" id="add-btn">+ Add values file</button>
-          <button class="btn btn-primary" id="add-chart-btn">+ Add chart</button>
-        </div>
-        <div class="tree-action-hint">Values file = single yaml &nbsp;|&nbsp; Chart = folder with subchart tree</div>
-      </div>
     </div>
 
     <!-- Right: values panel -->
