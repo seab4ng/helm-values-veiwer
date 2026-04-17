@@ -178,11 +178,17 @@
 
   <div class="add-panel" id="add-chart-panel">
     <div class="panel-title">Add a chart</div>
-    <div class="panel-desc">Upload a full chart folder with Chart.yaml and charts/ subdirectory. Discovers all subcharts and builds the dependency tree.</div>
-    <label class="upload-label" style="margin-bottom:12px;">
-      &#128194; Select chart folder
-      <input type="file" id="chart-folder-in" webkitdirectory directory multiple />
-    </label>
+    <div class="panel-desc">Upload a chart folder <em>or</em> a <code>.tgz</code> archive. Discovers all subcharts and builds the dependency tree.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <label class="upload-label">
+        &#128194; Select chart folder
+        <input type="file" id="chart-folder-in" webkitdirectory directory multiple />
+      </label>
+      <label class="upload-label">
+        &#128230; Upload .tgz
+        <input type="file" id="chart-tgz-in" accept=".tgz,.tar.gz" />
+      </label>
+    </div>
     <div id="chart-upload-status" style="font-size:12px;color:var(--text2);min-height:20px;margin-bottom:8px;"></div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" id="save-chart-btn" disabled>Save chart</button>
@@ -226,6 +232,7 @@
 <div class="toast-area" id="toast-area"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
 <script>
 (function(){
   // State
@@ -505,7 +512,9 @@
       $('val-name').textContent='All charts';
       $('val-desc').textContent=names.length+' charts loaded';
     }else if(selected&&getData(selected)){
-      showCharts=[selected];
+      // Include the selected chart + all its descendants that have data
+      const descendants=getDescendants(selected).filter(n=>getData(n));
+      showCharts=[selected,...descendants];
       const charts=getFullManifest();
       const chart=charts[selected];
       $('val-name').innerHTML=esc(selected)+(isBuiltin(selected)?' <span class="builtin-tag">built-in</span>':'');
@@ -592,7 +601,7 @@
   let pendingChartRoot=null;
 
   $('add-chart-btn').onclick=()=>{$('add-chart-panel').classList.toggle('open');$('add-panel').classList.remove('open');};
-  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartEntries={};pendingChartRoot=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';};
+  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartEntries={};pendingChartRoot=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';};
 
   $('chart-folder-in').onchange=async(e)=>{
     const files=Array.from(e.target.files||[]);
@@ -681,6 +690,116 @@
     }
   };
 
+  // Parse a .tgz buffer into a flat {path: content} map using fflate
+  function parseTgz(buffer){
+    return new Promise((resolve,reject)=>{
+      try{
+        const uint8=new Uint8Array(buffer);
+        fflate.gunzip(uint8,(err,decompressed)=>{
+          if(err)return reject(err);
+          const fileMap={};
+          let off=0;
+          while(off+512<=decompressed.length){
+            // Read tar header
+            const nameBytes=decompressed.slice(off,off+100);
+            let name='';
+            for(let i=0;i<nameBytes.length&&nameBytes[i]!==0;i++) name+=String.fromCharCode(nameBytes[i]);
+            name=name.replace(/^\.\//,'');
+            if(!name){off+=512;continue;}
+            const sizeOctet=decompressed.slice(off+124,off+136);
+            let sizeStr='';
+            for(let i=0;i<sizeOctet.length&&sizeOctet[i]!==0;i++) sizeStr+=String.fromCharCode(sizeOctet[i]);
+            const size=parseInt(sizeStr.trim(),8)||0;
+            const typeFlag=decompressed[off+156];
+            off+=512;
+            if(typeFlag!==53&&typeFlag!==55&&name){ // not directory
+              const lower=name.toLowerCase();
+              if(lower.endsWith('/chart.yaml')||lower.endsWith('/values.yaml')||lower==='chart.yaml'||lower==='values.yaml'){
+                // Strip leading chart-name/ prefix (first path segment) so paths match folder upload convention
+                const parts=name.split('/');
+                const normalized=parts.length>1?parts.slice(1).join('/'):name;
+                if(normalized){
+                  try{fileMap[normalized]=new TextDecoder().decode(decompressed.slice(off,off+size));}catch(e){}
+                }
+              }
+            }
+            off+=Math.ceil(size/512)*512;
+          }
+          resolve(fileMap);
+        });
+      }catch(e){reject(e);}
+    });
+  }
+
+  $('chart-tgz-in').onchange=async(e)=>{
+    const file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    const statusEl=$('chart-upload-status');
+    statusEl.textContent='Reading .tgz...';
+    statusEl.style.color='var(--text2)';
+    pendingChartEntries={};
+    pendingChartRoot=null;
+    try{
+      const buffer=await file.arrayBuffer();
+      const fileMap=await parseTgz(buffer);
+
+      const chartYamls=Object.keys(fileMap).filter(p=>p.toLowerCase().endsWith('/chart.yaml')||p.toLowerCase()==='chart.yaml');
+      if(!chartYamls.length){
+        statusEl.textContent='No Chart.yaml found in the .tgz archive.';
+        statusEl.style.color='var(--red)';return;
+      }
+      chartYamls.sort((a,b)=>a.split('/').length-b.split('/').length);
+
+      function dirOf(p){return p.includes('/')?p.substring(0,p.lastIndexOf('/')):''; }
+      const tempData={};
+      const tempEntries={};
+
+      function discoverChartTgz(chartYamlPath,parent){
+        const dir=dirOf(chartYamlPath);
+        const content=fileMap[chartYamlPath];
+        if(!content)return;
+        const meta=jsyaml.load(content)||{};
+        const name=meta.name||dir.split('/').pop()||'unknown';
+        const valuesPath=dir?dir+'/values.yaml':'values.yaml';
+        const valuesContent=fileMap[valuesPath];
+        const entry={name,version:meta.version||'',description:meta.description||'',dependencies:[]};
+        if(parent)entry.parent=parent;
+        if(valuesContent){
+          try{tempData[name]=jsyaml.load(valuesContent)||{};}catch(e){}
+          entry.values_file=name+'.yaml';
+        }
+        tempEntries[name]=entry;
+        const deps=meta.dependencies||[];
+        if(Array.isArray(deps)){
+          for(const d of deps){
+            if(d&&typeof d==='object'&&d.name) entry.dependencies.push(d.alias||d.name);
+          }
+        }
+        const chartsSubdir=dir?dir+'/charts':'charts';
+        const subChartYamls=chartYamls.filter(p=>{
+          if(p===chartYamlPath)return false;
+          const pDir=dirOf(p);
+          const rel=pDir.substring(chartsSubdir.length+1);
+          return pDir.startsWith(chartsSubdir)&&!rel.includes('/');
+        });
+        for(const subPath of subChartYamls) discoverChartTgz(subPath,name);
+      }
+
+      const rootMeta=jsyaml.load(fileMap[chartYamls[0]])||{};
+      pendingChartRoot=rootMeta.name||file.name.replace(/\.(tgz|tar\.gz)$/i,'');
+      discoverChartTgz(chartYamls[0],null);
+
+      pendingChartEntries={entries:tempEntries,data:tempData,root:pendingChartRoot};
+      const chartCount=Object.keys(tempEntries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tempEntries).join(', ')}`;
+      statusEl.style.color='var(--green)';
+      $('save-chart-btn').disabled=false;
+    }catch(err){
+      statusEl.textContent='Error: '+err.message;
+      statusEl.style.color='var(--red)';
+    }
+  };
+
   $('save-chart-btn').onclick=()=>{
     if(!pendingChartEntries.root)return;
     const{entries,data,root}=pendingChartEntries;
@@ -697,7 +816,7 @@
     toast(`Added chart tree: ${root} (${Object.keys(entries).length} charts)`);
     $('add-chart-panel').classList.remove('open');
     pendingChartEntries={};pendingChartRoot=null;
-    $('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';
+    $('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';
     selected=root;
     renderTree();renderValues();
   };
