@@ -234,8 +234,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script src="lib.js"></script>
 <script>
 (function(){
+  const {flatten,esc,highlight,displayName,dirOf,buildChartTree}=HelmLib;
+
   // State
   // manifest tracks the dependency tree. Multiple roots supported (userRoots).
   let manifest = { root: null, charts: {} };
@@ -276,37 +279,6 @@
     renderTree();renderValues();
   }
 
-  // ── Helpers ──
-  function flatten(obj,prefix,out){
-    if(obj===null||obj===undefined){out.push({path:prefix,val:null,type:'null'});return;}
-    if(Array.isArray(obj)){
-      if(!obj.length){out.push({path:prefix,val:'[]',type:'arr'});return;}
-      obj.forEach((v,i)=>flatten(v,prefix+'['+i+']',out));return;
-    }
-    if(typeof obj==='object'){
-      const keys=Object.keys(obj);
-      if(!keys.length){out.push({path:prefix,val:'{}',type:'arr'});return;}
-      keys.forEach(k=>flatten(obj[k],prefix?prefix+'.'+k:k,out));return;
-    }
-    let type='str';
-    if(typeof obj==='number')type='num';
-    else if(typeof obj==='boolean')type='bool';
-    out.push({path:prefix,val:String(obj),type});
-  }
-  function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-  function highlight(text,query){
-    if(!query)return esc(text);
-    const lower=String(text).toLowerCase(),q=query.toLowerCase();
-    let result='',i=0;
-    while(i<lower.length){
-      const idx=lower.indexOf(q,i);
-      if(idx===-1){result+=esc(text.slice(i));break;}
-      result+=esc(text.slice(i,idx))+'<span class="hl">'+esc(text.slice(idx,idx+q.length))+'</span>';
-      i=idx+q.length;
-    }
-    return result;
-  }
-
   // Merge manifest + userManifest
   function getFullManifest(){
     const charts={...manifest.charts,...userManifestCharts};
@@ -314,7 +286,6 @@
   }
 
   function getData(name){ return userData[name]||builtinData[name]||null; }
-  function displayName(key){ const i=key.indexOf('|'); return i>=0?key.slice(i+1):key; }
   function isBuiltin(name){ return !!builtinData[name]&&!userData[name]; }
   function isUserAdded(name){ return !!userData[name]&&!builtinData[name]; }
 
@@ -499,7 +470,7 @@
 
   // ── Render values ──
   function renderValues(){
-    const box=$('scrollbox'),info=$('match-info')||$('status-line'),query=$('search').value.trim();
+    const box=$('scrollbox'),query=$('search').value.trim();
     $('clear-x').style.display=query?'block':'none';
     const statusLine=$('status-line');
     const names=allChartNames();
@@ -604,10 +575,9 @@
 
   // ── Events: Add chart folder ──
   let pendingChartEntries={};
-  let pendingChartRoot=null;
 
   $('add-chart-btn').onclick=()=>{$('add-chart-panel').classList.toggle('open');$('add-panel').classList.remove('open');};
-  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartEntries={};pendingChartRoot=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';};
+  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartEntries={};$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';};
 
   $('chart-folder-in').onchange=async(e)=>{
     const files=Array.from(e.target.files||[]);
@@ -617,7 +587,6 @@
     statusEl.textContent='Scanning chart folder...';
     statusEl.style.color='var(--text2)';
     pendingChartEntries={};
-    pendingChartRoot=null;
 
     try{
       const fileMap={};
@@ -629,82 +598,10 @@
         }
       }
 
-      const chartYamls=Object.keys(fileMap).filter(p=>p.toLowerCase().endsWith('/chart.yaml')||p.toLowerCase()==='chart.yaml');
-      if(!chartYamls.length){
-        statusEl.textContent='No Chart.yaml found in the uploaded folder.';
-        statusEl.style.color='var(--red)';return;
-      }
-      chartYamls.sort((a,b)=>a.split('/').length-b.split('/').length);
-      const rootChartYaml=chartYamls[0];
-
-      function dirOf(p){return p.includes('/')?p.substring(0,p.lastIndexOf('/')):''; }
-
-      const tempData={};
-      const tempEntries={};
-
-      function discoverChart(chartYamlPath,parent){
-        const dir=dirOf(chartYamlPath);
-        const content=fileMap[chartYamlPath];
-        if(!content)return;
-        const meta=jsyaml.load(content)||{};
-        const name=meta.name||dir.split('/').pop()||'unknown';
-
-        const valuesPath=dir?dir+'/values.yaml':'values.yaml';
-        const valuesContent=fileMap[valuesPath];
-
-        const entry={name,version:meta.version||'',description:meta.description||'',dependencies:[]};
-        if(parent)entry.parent=parent;
-
-        if(valuesContent){
-          try{tempData[name]=jsyaml.load(valuesContent)||{};}catch(e){}
-          entry.values_file=name+'.yaml';
-        }
-
-        tempEntries[name]=entry;
-
-        const deps=meta.dependencies||[];
-        if(Array.isArray(deps)){
-          for(const d of deps){
-            if(d&&typeof d==='object'&&d.name) entry.dependencies.push(d.alias||d.name);
-          }
-        }
-
-        const chartsSubdir=dir?dir+'/charts':'charts';
-        const subChartYamls=chartYamls.filter(p=>{
-          if(p===chartYamlPath)return false;
-          const pDir=dirOf(p);
-          const rel=pDir.substring(chartsSubdir.length+1);
-          return pDir.startsWith(chartsSubdir)&&!rel.includes('/');
-        });
-        for(const subPath of subChartYamls){
-          const subName=discoverChart(subPath,name);
-          if(subName&&!entry.dependencies.includes(subName)) entry.dependencies.push(subName);
-        }
-        return name;
-      }
-
-      const rootMeta=jsyaml.load(fileMap[rootChartYaml])||{};
-      pendingChartRoot=rootMeta.name||'chart';
-      discoverChart(rootChartYaml,null);
-
-      // Namespace subchart keys as "root|subname" to avoid collisions across trees
-      const nsEntries={},nsData={};
-      const r=pendingChartRoot;
-      for(const[n,e] of Object.entries(tempEntries)){
-        const k=n===r?n:r+'|'+n;
-        nsEntries[k]=e;
-      }
-      for(const[n,v] of Object.entries(tempData)){
-        const k=n===r?n:r+'|'+n;
-        nsData[k]=v;
-      }
-      for(const e of Object.values(nsEntries)){
-        e.dependencies=e.dependencies.map(d=>d in tempEntries?(d===r?d:r+'|'+d):d);
-      }
-      pendingChartEntries={entries:nsEntries,data:nsData,root:pendingChartRoot};
-
-      const chartCount=Object.keys(nsEntries).length;
-      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(nsEntries).map(k=>displayName(k)).join(', ')}`;
+      const tree=buildChartTree(fileMap,jsyaml.load.bind(jsyaml));
+      pendingChartEntries=tree;
+      const chartCount=Object.keys(tree.entries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tree.entries).map(k=>displayName(k)).join(', ')}`;
       statusEl.style.color='var(--green)';
       $('save-chart-btn').disabled=false;
 
@@ -762,78 +659,14 @@
     statusEl.textContent='Reading .tgz...';
     statusEl.style.color='var(--text2)';
     pendingChartEntries={};
-    pendingChartRoot=null;
     try{
       const buffer=await file.arrayBuffer();
       const fileMap=await parseTgz(buffer);
 
-      const chartYamls=Object.keys(fileMap).filter(p=>p.toLowerCase().endsWith('/chart.yaml')||p.toLowerCase()==='chart.yaml');
-      if(!chartYamls.length){
-        statusEl.textContent='No Chart.yaml found in the .tgz archive.';
-        statusEl.style.color='var(--red)';return;
-      }
-      chartYamls.sort((a,b)=>a.split('/').length-b.split('/').length);
-
-      function dirOf(p){return p.includes('/')?p.substring(0,p.lastIndexOf('/')):''; }
-      const tempData={};
-      const tempEntries={};
-
-      function discoverChartTgz(chartYamlPath,parent){
-        const dir=dirOf(chartYamlPath);
-        const content=fileMap[chartYamlPath];
-        if(!content)return;
-        const meta=jsyaml.load(content)||{};
-        const name=meta.name||dir.split('/').pop()||'unknown';
-        const valuesPath=dir?dir+'/values.yaml':'values.yaml';
-        const valuesContent=fileMap[valuesPath];
-        const entry={name,version:meta.version||'',description:meta.description||'',dependencies:[]};
-        if(parent)entry.parent=parent;
-        if(valuesContent){
-          try{tempData[name]=jsyaml.load(valuesContent)||{};}catch(e){}
-          entry.values_file=name+'.yaml';
-        }
-        tempEntries[name]=entry;
-        const deps=meta.dependencies||[];
-        if(Array.isArray(deps)){
-          for(const d of deps){
-            if(d&&typeof d==='object'&&d.name) entry.dependencies.push(d.alias||d.name);
-          }
-        }
-        const chartsSubdir=dir?dir+'/charts':'charts';
-        const subChartYamls=chartYamls.filter(p=>{
-          if(p===chartYamlPath)return false;
-          const pDir=dirOf(p);
-          const rel=pDir.substring(chartsSubdir.length+1);
-          return pDir.startsWith(chartsSubdir)&&!rel.includes('/');
-        });
-        for(const subPath of subChartYamls){
-          const subName=discoverChartTgz(subPath,name);
-          if(subName&&!entry.dependencies.includes(subName)) entry.dependencies.push(subName);
-        }
-        return name;
-      }
-
-      const rootMeta=jsyaml.load(fileMap[chartYamls[0]])||{};
-      pendingChartRoot=rootMeta.name||file.name.replace(/\.(tgz|tar\.gz)$/i,'');
-      discoverChartTgz(chartYamls[0],null);
-
-      // Namespace subchart keys as "root|subname" to avoid collisions across trees
-      const nsEntries={},nsData={};
-      const r=pendingChartRoot;
-      for(const[n,e] of Object.entries(tempEntries)){
-        const k=n===r?n:r+'|'+n;
-        nsEntries[k]=e;
-      }
-      for(const[n,v] of Object.entries(tempData)){
-        const k=n===r?n:r+'|'+n;
-        nsData[k]=v;
-      }
-      for(const e of Object.values(nsEntries)){
-        e.dependencies=e.dependencies.map(d=>d in tempEntries?(d===r?d:r+'|'+d):d);
-      }
-      pendingChartEntries={entries:nsEntries,data:nsData,root:pendingChartRoot};
-      const chartCount=Object.keys(nsEntries).length;
-      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(nsEntries).map(k=>displayName(k)).join(', ')}`;
+      const tree=buildChartTree(fileMap,jsyaml.load.bind(jsyaml),file.name.replace(/\.(tgz|tar\.gz)$/i,''));
+      pendingChartEntries=tree;
+      const chartCount=Object.keys(tree.entries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tree.entries).map(k=>displayName(k)).join(', ')}`;
       statusEl.style.color='var(--green)';
       $('save-chart-btn').disabled=false;
     }catch(err){
@@ -857,7 +690,7 @@
 
     toast(`Added chart tree: ${root} (${Object.keys(entries).length} charts)`);
     $('add-chart-panel').classList.remove('open');
-    pendingChartEntries={};pendingChartRoot=null;
+    pendingChartEntries={};
     $('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';
     selected=root;
     renderTree();renderValues();

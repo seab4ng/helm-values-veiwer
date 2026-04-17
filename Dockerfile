@@ -34,6 +34,7 @@ RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf
 
 COPY nginx.conf              /etc/nginx/conf.d/default.conf
 COPY app/index.html          /usr/share/nginx/html/index.html
+COPY app/lib.js          /usr/share/nginx/html/lib.js
 COPY docker-entrypoint.sh    /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

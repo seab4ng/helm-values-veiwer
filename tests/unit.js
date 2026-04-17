@@ -1,0 +1,235 @@
+'use strict';
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const {flatten, esc, highlight, displayName, dirOf, buildChartTree} = require('../app/lib.js');
+
+// ─────────────────────────────────────────────
+// flatten
+// ─────────────────────────────────────────────
+
+test('flatten: null value', () => {
+  const out = [];
+  flatten(null, 'a', out);
+  assert.deepEqual(out, [{path: 'a', val: null, type: 'null'}]);
+});
+
+test('flatten: undefined value', () => {
+  const out = [];
+  flatten(undefined, 'a', out);
+  assert.deepEqual(out, [{path: 'a', val: null, type: 'null'}]);
+});
+
+test('flatten: number value', () => {
+  const out = [];
+  flatten(42, 'num', out);
+  assert.deepEqual(out, [{path: 'num', val: '42', type: 'num'}]);
+});
+
+test('flatten: boolean value', () => {
+  const out = [];
+  flatten(true, 'flag', out);
+  assert.deepEqual(out, [{path: 'flag', val: 'true', type: 'bool'}]);
+});
+
+test('flatten: string value', () => {
+  const out = [];
+  flatten('hello', 'key', out);
+  assert.deepEqual(out, [{path: 'key', val: 'hello', type: 'str'}]);
+});
+
+test('flatten: empty array', () => {
+  const out = [];
+  flatten([], 'arr', out);
+  assert.deepEqual(out, [{path: 'arr', val: '[]', type: 'arr'}]);
+});
+
+test('flatten: array with items', () => {
+  const out = [];
+  flatten(['a', 'b'], 'arr', out);
+  assert.deepEqual(out, [
+    {path: 'arr[0]', val: 'a', type: 'str'},
+    {path: 'arr[1]', val: 'b', type: 'str'},
+  ]);
+});
+
+test('flatten: empty object', () => {
+  const out = [];
+  flatten({}, 'obj', out);
+  assert.deepEqual(out, [{path: 'obj', val: '{}', type: 'arr'}]);
+});
+
+test('flatten: nested object', () => {
+  const out = [];
+  flatten({a: {b: 1}}, '', out);
+  assert.deepEqual(out, [{path: 'a.b', val: '1', type: 'num'}]);
+});
+
+// ─────────────────────────────────────────────
+// esc
+// ─────────────────────────────────────────────
+
+test('esc: ampersand', () => {
+  assert.equal(esc('a&b'), 'a&amp;b');
+});
+
+test('esc: less-than', () => {
+  assert.equal(esc('<b>'), '&lt;b&gt;');
+});
+
+test('esc: greater-than', () => {
+  assert.equal(esc('x>y'), 'x&gt;y');
+});
+
+test('esc: double quote', () => {
+  assert.equal(esc('"hi"'), '&quot;hi&quot;');
+});
+
+test("esc: single quote", () => {
+  assert.equal(esc("it's"), "it&#39;s");
+});
+
+// ─────────────────────────────────────────────
+// highlight
+// ─────────────────────────────────────────────
+
+test('highlight: no query returns escaped text', () => {
+  assert.equal(highlight('<b>hi</b>', ''), '&lt;b&gt;hi&lt;/b&gt;');
+});
+
+test('highlight: single match', () => {
+  assert.equal(highlight('foobar', 'foo'), '<span class="hl">foo</span>bar');
+});
+
+test('highlight: case-insensitive match', () => {
+  assert.equal(highlight('FooBar', 'foo'), '<span class="hl">Foo</span>Bar');
+});
+
+test('highlight: multiple matches', () => {
+  assert.equal(highlight('aXbXc', 'x'), 'a<span class="hl">X</span>b<span class="hl">X</span>c');
+});
+
+test('highlight: match with special chars in text', () => {
+  // The text has a '<' which must be escaped outside AND inside the highlight span
+  assert.equal(highlight('a<b', 'a'), '<span class="hl">a</span>&lt;b');
+});
+
+// ─────────────────────────────────────────────
+// displayName
+// ─────────────────────────────────────────────
+
+test('displayName: key with pipe returns part after pipe', () => {
+  assert.equal(displayName('root|sub'), 'sub');
+});
+
+test('displayName: key without pipe returns full key', () => {
+  assert.equal(displayName('mychart'), 'mychart');
+});
+
+// ─────────────────────────────────────────────
+// dirOf
+// ─────────────────────────────────────────────
+
+test('dirOf: path with directory', () => {
+  assert.equal(dirOf('foo/bar/baz.yaml'), 'foo/bar');
+});
+
+test('dirOf: path without slash', () => {
+  assert.equal(dirOf('chart.yaml'), '');
+});
+
+test('dirOf: nested path', () => {
+  assert.equal(dirOf('a/b/c/d.yaml'), 'a/b/c');
+});
+
+// ─────────────────────────────────────────────
+// buildChartTree
+// ─────────────────────────────────────────────
+
+// Mock parseYaml using JSON so test fixtures are easy to write
+function mockParse(str) {
+  return JSON.parse(str);
+}
+
+function jsonStr(obj) {
+  return JSON.stringify(obj);
+}
+
+test('buildChartTree: throws when no Chart.yaml in fileMap', () => {
+  assert.throws(
+    () => buildChartTree({'values.yaml': jsonStr({})}, mockParse),
+    /No Chart\.yaml found/
+  );
+});
+
+test('buildChartTree: single chart, no subcharts', () => {
+  const fileMap = {
+    'Chart.yaml': jsonStr({name: 'myapp', version: '1.0.0', description: 'A simple app'}),
+    'values.yaml': jsonStr({replicaCount: 2}),
+  };
+  const tree = buildChartTree(fileMap, mockParse);
+  assert.equal(tree.root, 'myapp');
+  assert.ok(tree.entries['myapp']);
+  assert.equal(tree.entries['myapp'].name, 'myapp');
+  assert.equal(tree.entries['myapp'].version, '1.0.0');
+  assert.deepEqual(tree.entries['myapp'].dependencies, []);
+  assert.deepEqual(tree.data['myapp'], {replicaCount: 2});
+});
+
+test('buildChartTree: root + one subchart discovered from charts/ subdir', () => {
+  const fileMap = {
+    'Chart.yaml': jsonStr({name: 'parent', version: '0.1.0'}),
+    'values.yaml': jsonStr({foo: 'bar'}),
+    'charts/child/Chart.yaml': jsonStr({name: 'child', version: '0.2.0'}),
+    'charts/child/values.yaml': jsonStr({baz: 1}),
+  };
+  const tree = buildChartTree(fileMap, mockParse);
+  assert.equal(tree.root, 'parent');
+  // parent entry exists and lists namespaced child dependency
+  assert.ok(tree.entries['parent']);
+  assert.ok(tree.entries['parent|child']);
+  assert.ok(tree.entries['parent'].dependencies.includes('parent|child'));
+});
+
+test('buildChartTree: subchart namespaced key displayName equals bare chart name', () => {
+  const fileMap = {
+    'Chart.yaml': jsonStr({name: 'root'}),
+    'charts/sub/Chart.yaml': jsonStr({name: 'sub'}),
+  };
+  const tree = buildChartTree(fileMap, mockParse);
+  assert.equal(displayName('root|sub'), 'sub');
+});
+
+test('buildChartTree: deps from Chart.yaml dependencies array merged (no duplicates)', () => {
+  // The root Chart.yaml lists 'child' as a dependency AND it also exists in charts/ subdir
+  const fileMap = {
+    'Chart.yaml': jsonStr({
+      name: 'root',
+      dependencies: [{name: 'child', version: '1.0.0'}],
+    }),
+    'charts/child/Chart.yaml': jsonStr({name: 'child', version: '1.0.0'}),
+    'charts/child/values.yaml': jsonStr({x: 1}),
+  };
+  const tree = buildChartTree(fileMap, mockParse);
+  const rootDeps = tree.entries['root'].dependencies;
+  const uniqueDeps = [...new Set(rootDeps)];
+  assert.deepEqual(rootDeps, uniqueDeps, 'dependencies should not contain duplicates');
+  assert.ok(rootDeps.includes('root|child'));
+});
+
+test('buildChartTree: values.yaml parsed and stored in data', () => {
+  const fileMap = {
+    'Chart.yaml': jsonStr({name: 'app'}),
+    'values.yaml': jsonStr({image: {tag: 'latest'}, port: 8080}),
+  };
+  const tree = buildChartTree(fileMap, mockParse);
+  assert.deepEqual(tree.data['app'], {image: {tag: 'latest'}, port: 8080});
+});
+
+test('buildChartTree: rootFallback used when Chart.yaml has no name field', () => {
+  const fileMap = {
+    'Chart.yaml': jsonStr({version: '0.1.0'}),
+  };
+  const tree = buildChartTree(fileMap, mockParse, 'myfallback');
+  assert.equal(tree.root, 'myfallback');
+  assert.ok(tree.entries['myfallback']);
+});
