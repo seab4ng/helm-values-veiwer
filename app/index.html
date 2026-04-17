@@ -403,43 +403,45 @@
       <span class="tree-count">${names.length}</span>
     </div>`;
 
-    const rendered=new Set();
+    const renderedRoots=new Set();
 
     // Render built-in tree
     if(manifest.root&&manifest.charts[manifest.root]){
-      html+=renderTreeNode(manifest.root,0,false,rendered);
+      html+=renderTreeNode(manifest.root,0,false,new Set());
+      renderedRoots.add(manifest.root);
     }
 
-    // Render user-uploaded chart trees
+    // Render user-uploaded chart trees (each gets its own rendered set)
     for(const rootName of userRoots){
-      if(!rendered.has(rootName)&&userManifestCharts[rootName]){
-        html+=renderTreeNode(rootName,0,true,rendered);
+      if(!renderedRoots.has(rootName)&&userManifestCharts[rootName]){
+        html+=renderTreeNode(rootName,0,true,new Set());
+        renderedRoots.add(rootName);
       }
     }
 
     // Render flat user-added values (not part of any tree)
     for(const name of Object.keys(userData).sort()){
-      if(rendered.has(name))continue;
-      if(userManifestCharts[name])continue; // part of a tree but not root
+      if(userManifestCharts[name])continue; // part of a tree, shown inside it
+      if(renderedRoots.has(name))continue;
       html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
         <span class="tree-dot"></span>
         <span class="tree-name">${esc(name)}</span>
         <span class="tree-count">${countKeys(name)}</span>
         <span class="tree-del" data-del="${esc(name)}" title="Delete">&times;</span>
       </div>`;
-      rendered.add(name);
+      renderedRoots.add(name);
     }
 
     // Render built-in flat (no tree)
     for(const name of Object.keys(builtinData).sort()){
-      if(rendered.has(name))continue;
+      if(renderedRoots.has(name))continue;
       html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
         <span class="tree-dot sub"></span>
         <span class="tree-name">${esc(name)}</span>
         <span class="builtin-tag">built-in</span>
         <span class="tree-count">${countKeys(name)}</span>
       </div>`;
-      rendered.add(name);
+      renderedRoots.add(name);
     }
 
     el.innerHTML=html;
