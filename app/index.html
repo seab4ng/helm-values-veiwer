@@ -313,6 +313,7 @@
   }
 
   function getData(name){ return userData[name]||builtinData[name]||null; }
+  function displayName(key){ const i=key.indexOf('|'); return i>=0?key.slice(i+1):key; }
   function isBuiltin(name){ return !!builtinData[name]&&!userData[name]; }
   function isUserAdded(name){ return !!userData[name]&&!builtinData[name]; }
 
@@ -403,45 +404,47 @@
       <span class="tree-count">${names.length}</span>
     </div>`;
 
-    const renderedRoots=new Set();
+    const allRendered=new Set();
 
     // Render built-in tree
     if(manifest.root&&manifest.charts[manifest.root]){
-      html+=renderTreeNode(manifest.root,0,false,new Set());
-      renderedRoots.add(manifest.root);
+      const tr=new Set();
+      html+=renderTreeNode(manifest.root,0,false,tr);
+      tr.forEach(n=>allRendered.add(n));
     }
 
     // Render user-uploaded chart trees (each gets its own rendered set)
     for(const rootName of userRoots){
-      if(!renderedRoots.has(rootName)&&userManifestCharts[rootName]){
-        html+=renderTreeNode(rootName,0,true,new Set());
-        renderedRoots.add(rootName);
+      if(!allRendered.has(rootName)&&userManifestCharts[rootName]){
+        const tr=new Set();
+        html+=renderTreeNode(rootName,0,true,tr);
+        tr.forEach(n=>allRendered.add(n));
       }
     }
 
     // Render flat user-added values (not part of any tree)
     for(const name of Object.keys(userData).sort()){
+      if(allRendered.has(name))continue;
       if(userManifestCharts[name])continue; // part of a tree, shown inside it
-      if(renderedRoots.has(name))continue;
       html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
         <span class="tree-dot"></span>
-        <span class="tree-name">${esc(name)}</span>
+        <span class="tree-name">${esc(displayName(name))}</span>
         <span class="tree-count">${countKeys(name)}</span>
         <span class="tree-del" data-del="${esc(name)}" title="Delete">&times;</span>
       </div>`;
-      renderedRoots.add(name);
+      allRendered.add(name);
     }
 
     // Render built-in flat (no tree)
     for(const name of Object.keys(builtinData).sort()){
-      if(renderedRoots.has(name))continue;
+      if(allRendered.has(name))continue;
       html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
         <span class="tree-dot sub"></span>
         <span class="tree-name">${esc(name)}</span>
         <span class="builtin-tag">built-in</span>
         <span class="tree-count">${countKeys(name)}</span>
       </div>`;
-      renderedRoots.add(name);
+      allRendered.add(name);
     }
 
     el.innerHTML=html;
@@ -478,7 +481,7 @@
     for(let i=0;i<depth;i++) html+=`<span class="tree-indent" style="width:12px;"></span>`;
     if(depth>0) html+=`<span class="tree-line">&#9492;</span>`;
     html+=`<span class="tree-dot${isRoot?' root':' sub'}"></span>`;
-    html+=`<span class="tree-name">${esc(name)}</span>`;
+    html+=`<span class="tree-name">${esc(chart.name||displayName(name))}</span>`;
     if(chart.version) html+=`<span class="tree-ver">${esc(chart.version)}</span>`;
     if(!isUser&&isBuiltin(name)) html+=`<span class="builtin-tag">built-in</span>`;
     if(hasData) html+=`<span class="tree-count">${countKeys(name)}</span>`;
@@ -519,7 +522,7 @@
       showCharts=[selected,...descendants];
       const charts=getFullManifest();
       const chart=charts[selected];
-      $('val-name').innerHTML=esc(selected)+(isBuiltin(selected)?' <span class="builtin-tag">built-in</span>':'');
+      $('val-name').innerHTML=esc(displayName(selected))+(isBuiltin(selected)?' <span class="builtin-tag">built-in</span>':'');
       $('val-desc').textContent=chart?chart.description||'':'';
     }else{
       showCharts=names;selected='__all__';
@@ -540,7 +543,7 @@
 
       if(showCharts.length>1){
         html+=`<div style="padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1;">`;
-        html+=esc(name);
+        html+=esc(displayName(name));
         if(isBuiltin(name)) html+=` <span class="builtin-tag">built-in</span>`;
         html+=` <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--accent-dim);color:var(--accent);">${filtered.length} ${query?'matches':'keys'}</span>`;
         html+=`</div>`;
@@ -683,10 +686,24 @@
       pendingChartRoot=rootMeta.name||'chart';
       discoverChart(rootChartYaml,null);
 
-      pendingChartEntries={entries:tempEntries,data:tempData,root:pendingChartRoot};
+      // Namespace subchart keys as "root|subname" to avoid collisions across trees
+      const nsEntries={},nsData={};
+      const r=pendingChartRoot;
+      for(const[n,e] of Object.entries(tempEntries)){
+        const k=n===r?n:r+'|'+n;
+        nsEntries[k]=e;
+      }
+      for(const[n,v] of Object.entries(tempData)){
+        const k=n===r?n:r+'|'+n;
+        nsData[k]=v;
+      }
+      for(const e of Object.values(nsEntries)){
+        e.dependencies=e.dependencies.map(d=>d in tempEntries?(d===r?d:r+'|'+d):d);
+      }
+      pendingChartEntries={entries:nsEntries,data:nsData,root:pendingChartRoot};
 
-      const chartCount=Object.keys(tempEntries).length;
-      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tempEntries).join(', ')}`;
+      const chartCount=Object.keys(nsEntries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(nsEntries).map(k=>displayName(k)).join(', ')}`;
       statusEl.style.color='var(--green)';
       $('save-chart-btn').disabled=false;
 
@@ -799,9 +816,23 @@
       pendingChartRoot=rootMeta.name||file.name.replace(/\.(tgz|tar\.gz)$/i,'');
       discoverChartTgz(chartYamls[0],null);
 
-      pendingChartEntries={entries:tempEntries,data:tempData,root:pendingChartRoot};
-      const chartCount=Object.keys(tempEntries).length;
-      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tempEntries).join(', ')}`;
+      // Namespace subchart keys as "root|subname" to avoid collisions across trees
+      const nsEntries={},nsData={};
+      const r=pendingChartRoot;
+      for(const[n,e] of Object.entries(tempEntries)){
+        const k=n===r?n:r+'|'+n;
+        nsEntries[k]=e;
+      }
+      for(const[n,v] of Object.entries(tempData)){
+        const k=n===r?n:r+'|'+n;
+        nsData[k]=v;
+      }
+      for(const e of Object.values(nsEntries)){
+        e.dependencies=e.dependencies.map(d=>d in tempEntries?(d===r?d:r+'|'+d):d);
+      }
+      pendingChartEntries={entries:nsEntries,data:nsData,root:pendingChartRoot};
+      const chartCount=Object.keys(nsEntries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(nsEntries).map(k=>displayName(k)).join(', ')}`;
       statusEl.style.color='var(--green)';
       $('save-chart-btn').disabled=false;
     }catch(err){
