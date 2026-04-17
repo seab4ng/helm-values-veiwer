@@ -21,22 +21,20 @@
   body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.5;}
   .shell{max-width:1200px;margin:0 auto;padding:1.5rem;}
 
-  /* Header */
   .hdr{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
   .hdr-icon{width:38px;height:38px;background:var(--accent-dim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
   .hdr h1{font-size:20px;font-weight:600;letter-spacing:-0.5px;}
   .hdr p{font-size:13px;color:var(--text2);margin-top:1px;}
 
-  /* Layout: tree left, values right */
   .main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:16px;align-items:start;}
   @media(max-width:768px){.main{grid-template-columns:1fr;}}
 
-  /* Left panel - tree */
+  /* Left panel */
   .tree-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
   .tree-panel-hdr{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg3);}
   .tree-content{padding:8px 0;}
 
-  .tree-node{display:flex;align-items:center;gap:8px;padding:6px 16px;cursor:pointer;transition:background 0.1s;font-size:13px;}
+  .tree-node{display:flex;align-items:center;gap:8px;padding:6px 16px;cursor:pointer;transition:background 0.1s;font-size:13px;position:relative;}
   .tree-node:hover{background:var(--bg3);}
   .tree-node.active{background:var(--accent-dim);color:var(--accent);}
   .tree-node.active .tree-dot{background:var(--accent);}
@@ -50,14 +48,28 @@
   .tree-name{flex:1;font-weight:500;word-break:break-word;}
   .tree-ver{font-size:11px;color:var(--text3);font-family:var(--mono);}
   .tree-count{font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text2);flex-shrink:0;}
+  .builtin-tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--purple-dim);color:var(--purple);text-transform:uppercase;letter-spacing:0.4px;font-weight:500;}
 
-  /* Right panel - values */
+  .tree-del{
+    flex-shrink:0;width:20px;height:20px;border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;color:var(--text3);cursor:pointer;
+    transition:all 0.15s;opacity:0;
+  }
+  .tree-node:hover .tree-del{opacity:1;}
+  .tree-del:hover{background:#3d1416;color:var(--red);}
+
+  .tree-actions{padding:8px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
+  .tree-action-row{display:flex;align-items:center;gap:8px;}
+  .tree-action-row .btn{flex:1;text-align:center;font-size:11px;padding:5px 8px;}
+  .tree-action-hint{font-size:10px;color:var(--text3);text-align:center;}
+
+  /* Right panel */
   .values-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
   .values-hdr{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
   .values-hdr-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
   .values-chart-name{font-size:15px;font-weight:600;}
   .values-chart-desc{font-size:12px;color:var(--text3);margin-bottom:10px;}
-  .builtin-tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--purple-dim);color:var(--purple);text-transform:uppercase;letter-spacing:0.4px;font-weight:500;}
   .search-wrap{position:relative;}
   .search-wrap input{
     width:100%;padding:8px 12px 8px 34px;
@@ -94,8 +106,6 @@
   .empty{color:var(--text2);font-size:14px;text-align:center;padding:3rem 1rem;}
   .empty span{display:block;font-size:28px;margin-bottom:6px;opacity:0.4;}
 
-  /* Add panel */
-  .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
   .btn{
     font-family:var(--font);font-size:12px;font-weight:500;
     padding:6px 14px;border-radius:var(--radius);
@@ -125,8 +135,6 @@
   .upload-label:hover{border-color:var(--accent);color:var(--accent);}
   .upload-label input{display:none;}
 
-  .toolbar-item{display:flex;flex-direction:column;gap:2px;}
-  .toolbar-hint{font-size:11px;color:var(--text3);padding-left:2px;}
   .panel-title{font-size:14px;font-weight:600;margin-bottom:4px;}
   .panel-desc{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;}
 
@@ -151,22 +159,10 @@
     </div>
   </div>
 
-  <div class="toolbar">
-    <div class="toolbar-item">
-      <button class="btn btn-primary" id="add-btn">+ Add values file</button>
-      <span class="toolbar-hint">Single values.yaml — no dependency tree</span>
-    </div>
-    <div class="toolbar-item">
-      <button class="btn btn-primary" id="add-chart-btn">+ Add chart</button>
-      <span class="toolbar-hint">Full chart folder — includes subchart tree</span>
-    </div>
-    <button class="btn" id="clear-btn">Clear added</button>
-  </div>
-
-  <!-- Panel: add single values file -->
+  <!-- Panels (above the main grid, full width) -->
   <div class="add-panel" id="add-panel">
     <div class="panel-title">Add a values file</div>
-    <div class="panel-desc">Upload or paste a single values.yaml. It will appear as a standalone chart with no dependency tree.</div>
+    <div class="panel-desc">Upload or paste a single values.yaml. Shows as a standalone entry, no subchart tree.</div>
     <label>Chart name</label>
     <input type="text" id="name-in" placeholder="e.g. my-app" />
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -180,10 +176,9 @@
     </div>
   </div>
 
-  <!-- Panel: add full chart folder -->
   <div class="add-panel" id="add-chart-panel">
     <div class="panel-title">Add a chart</div>
-    <div class="panel-desc">Upload a chart folder (with Chart.yaml and charts/ subdirectory). The app will discover all subcharts and build the dependency tree automatically.</div>
+    <div class="panel-desc">Upload a full chart folder with Chart.yaml and charts/ subdirectory. Discovers all subcharts and builds the dependency tree.</div>
     <label class="upload-label" style="margin-bottom:12px;">
       &#128194; Select chart folder
       <input type="file" id="chart-folder-in" webkitdirectory directory multiple />
@@ -196,13 +191,20 @@
   </div>
 
   <div class="main">
-    <!-- Left: dependency tree -->
+    <!-- Left: tree panel -->
     <div class="tree-panel">
       <div class="tree-panel-hdr">Chart dependency tree</div>
       <div class="tree-content" id="tree"></div>
+      <div class="tree-actions">
+        <div class="tree-action-row">
+          <button class="btn btn-primary" id="add-btn">+ Add values file</button>
+          <button class="btn btn-primary" id="add-chart-btn">+ Add chart</button>
+        </div>
+        <div class="tree-action-hint">Values file = single yaml &nbsp;|&nbsp; Chart = folder with subchart tree</div>
+      </div>
     </div>
 
-    <!-- Right: values -->
+    <!-- Right: values panel -->
     <div class="values-panel">
       <div class="values-hdr" id="values-hdr">
         <div class="values-hdr-top">
@@ -227,30 +229,32 @@
 <script>
 (function(){
   // State
+  // manifest tracks the dependency tree. Multiple roots supported (userRoots).
   let manifest = { root: null, charts: {} };
-  const builtinData = {};   // chart_name -> parsed yaml
-  const userData = {};       // chart_name -> parsed yaml
-  let selected = null;       // currently selected chart name, or '__all__'
+  const builtinData = {};
+  const userData = {};
+  const userManifestCharts = {};  // chart entries added via "Add chart"
+  const userRoots = [];           // root names from user-uploaded charts
+  let selected = null;
 
   const $=id=>document.getElementById(id);
 
-  // ── Toast ──
   function toast(msg,err){
     const el=document.createElement('div');
     el.className='toast'+(err?' err':'');
     el.textContent=msg;
     $('toast-area').appendChild(el);
-    setTimeout(()=>el.remove(), err?6000:4000);
+    setTimeout(()=>el.remove(),err?6000:4000);
   }
 
-  // ── Load built-in data from manifest.json ──
+  // ── Load built-in data ──
   async function loadBuiltins(){
     try{
       const resp=await fetch('/values/manifest.json');
       if(!resp.ok) return;
-      manifest=await resp.json();
-
-      for(const[name,chart] of Object.entries(manifest.charts)){
+      const m=await resp.json();
+      manifest=m;
+      for(const[name,chart] of Object.entries(m.charts)){
         if(!chart.values_file) continue;
         try{
           const r=await fetch('/values/'+chart.values_file);
@@ -259,14 +263,12 @@
         }catch(e){}
       }
     }catch(e){}
-
     if(manifest.root) selected=manifest.root;
     else if(Object.keys(builtinData).length) selected=Object.keys(builtinData).sort()[0];
-    renderTree();
-    renderValues();
+    renderTree();renderValues();
   }
 
-  // ── Flatten YAML to dotted paths ──
+  // ── Helpers ──
   function flatten(obj,prefix,out){
     if(obj===null||obj===undefined){out.push({path:prefix,val:null,type:'null'});return;}
     if(Array.isArray(obj)){
@@ -283,9 +285,7 @@
     else if(typeof obj==='boolean')type='bool';
     out.push({path:prefix,val:String(obj),type});
   }
-
   function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
   function highlight(text,query){
     if(!query)return esc(text);
     const lower=String(text).toLowerCase(),q=query.toLowerCase();
@@ -299,26 +299,85 @@
     return result;
   }
 
-  function getData(name){
-    return userData[name] || builtinData[name] || null;
+  // Merge manifest + userManifest
+  function getFullManifest(){
+    const charts={...manifest.charts,...userManifestCharts};
+    return charts;
   }
 
-  function isBuiltin(name){
-    return !!builtinData[name] && !userData[name];
-  }
+  function getData(name){ return userData[name]||builtinData[name]||null; }
+  function isBuiltin(name){ return !!builtinData[name]&&!userData[name]; }
+  function isUserAdded(name){ return !!userData[name]&&!builtinData[name]; }
 
   function allChartNames(){
     const s=new Set([...Object.keys(builtinData),...Object.keys(userData)]);
     return [...s].sort();
   }
-
   function countKeys(name){
     const data=getData(name);
     if(!data)return 0;
     const flat=[];flatten(data,'',flat);return flat.length;
   }
 
-  // ── Render dependency tree ──
+  // Get all descendants of a chart in the manifest tree
+  function getDescendants(name){
+    const charts=getFullManifest();
+    const result=[];
+    function walk(n){
+      const c=charts[n];
+      if(!c)return;
+      const deps=c.dependencies||[];
+      for(const d of deps){
+        result.push(d);
+        walk(d);
+      }
+    }
+    walk(name);
+    return result;
+  }
+
+  // Delete a chart and optionally its descendants
+  function deleteChart(name){
+    const charts=getFullManifest();
+    const entry=charts[name];
+    const toDelete=[name];
+
+    // If it has children (is a parent), delete descendants too
+    if(entry&&entry.dependencies&&entry.dependencies.length){
+      toDelete.push(...getDescendants(name));
+    }
+
+    for(const n of toDelete){
+      delete userData[n];
+      delete userManifestCharts[n];
+    }
+
+    // Remove from userRoots
+    const ri=userRoots.indexOf(name);
+    if(ri>-1) userRoots.splice(ri,1);
+
+    // Also remove from parent's dependency list if it's a subchart
+    if(entry&&entry.parent){
+      const parent=charts[entry.parent];
+      if(parent&&parent.dependencies){
+        const idx=parent.dependencies.indexOf(name);
+        if(idx>-1){
+          // Modify the right source
+          if(userManifestCharts[entry.parent]) userManifestCharts[entry.parent].dependencies.splice(idx,1);
+          else if(manifest.charts[entry.parent]) manifest.charts[entry.parent].dependencies.splice(idx,1);
+        }
+      }
+    }
+
+    // If deleted was selected, go to __all__
+    if(toDelete.includes(selected)) selected='__all__';
+
+    const count=toDelete.length;
+    toast(`Deleted ${count===1?name:name+' + '+( count-1)+' subchart'+(count>2?'s':'')}`);
+    renderTree();renderValues();
+  }
+
+  // ── Render tree ──
   function renderTree(){
     const el=$('tree');
     const names=allChartNames();
@@ -330,144 +389,144 @@
 
     let html='';
 
-    // "All charts" option
+    // "All charts"
     html+=`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
       <span class="tree-dot" style="background:var(--cyan);"></span>
       <span class="tree-name">All charts</span>
       <span class="tree-count">${names.length}</span>
     </div>`;
 
-    // If we have a manifest with a root, render as a tree
-    if(manifest.root && manifest.charts[manifest.root]){
-      html+=renderTreeNode(manifest.root, 0);
+    const rendered=new Set();
 
-      // Also render user-added charts that aren't in the manifest
-      for(const name of Object.keys(userData).sort()){
-        if(!manifest.charts[name]){
-          html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
-            <span class="tree-dot"></span>
-            <span class="tree-name">${esc(name)}</span>
-            <span class="tree-count">${countKeys(name)}</span>
-          </div>`;
-        }
+    // Render built-in tree
+    if(manifest.root&&manifest.charts[manifest.root]){
+      html+=renderTreeNode(manifest.root,0,false,rendered);
+    }
+
+    // Render user-uploaded chart trees
+    for(const rootName of userRoots){
+      if(!rendered.has(rootName)&&userManifestCharts[rootName]){
+        html+=renderTreeNode(rootName,0,true,rendered);
       }
-    } else {
-      // No manifest tree - just flat list
-      for(const name of names){
-        html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
-          <span class="tree-dot${isBuiltin(name)?' sub':''}"></span>
-          <span class="tree-name">${esc(name)}</span>
-          ${isBuiltin(name)?'<span class="builtin-tag">built-in</span>':''}
-          <span class="tree-count">${countKeys(name)}</span>
-        </div>`;
-      }
+    }
+
+    // Render flat user-added values (not part of any tree)
+    for(const name of Object.keys(userData).sort()){
+      if(rendered.has(name))continue;
+      if(userManifestCharts[name])continue; // part of a tree but not root
+      html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
+        <span class="tree-dot"></span>
+        <span class="tree-name">${esc(name)}</span>
+        <span class="tree-count">${countKeys(name)}</span>
+        <span class="tree-del" data-del="${esc(name)}" title="Delete">&times;</span>
+      </div>`;
+      rendered.add(name);
+    }
+
+    // Render built-in flat (no tree)
+    for(const name of Object.keys(builtinData).sort()){
+      if(rendered.has(name))continue;
+      html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
+        <span class="tree-dot sub"></span>
+        <span class="tree-name">${esc(name)}</span>
+        <span class="builtin-tag">built-in</span>
+        <span class="tree-count">${countKeys(name)}</span>
+      </div>`;
+      rendered.add(name);
     }
 
     el.innerHTML=html;
 
-    // Click handlers
+    // Click: select
     el.querySelectorAll('.tree-node').forEach(node=>{
-      node.addEventListener('click',()=>{
+      node.addEventListener('click',(e)=>{
+        if(e.target.classList.contains('tree-del'))return;
         selected=node.dataset.name;
-        renderTree();
-        renderValues();
+        renderTree();renderValues();
+      });
+    });
+
+    // Click: delete
+    el.querySelectorAll('.tree-del').forEach(btn=>{
+      btn.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        deleteChart(btn.dataset.del);
       });
     });
   }
 
-  function renderTreeNode(name, depth){
-    const chart=manifest.charts[name];
-    if(!chart) return '';
+  function renderTreeNode(name,depth,isUser,rendered){
+    const charts=getFullManifest();
+    const chart=charts[name];
+    if(!chart)return '';
+    rendered.add(name);
     const hasData=!!getData(name);
     const deps=chart.dependencies||[];
     const isRoot=depth===0;
+    const canDelete=isUser||isUserAdded(name);
 
     let html=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">`;
-
-    // Indentation
-    for(let i=0;i<depth;i++){
-      html+=`<span class="tree-indent" style="width:12px;"></span>`;
-    }
-    if(depth>0){
-      html+=`<span class="tree-line">&#9492;</span>`;
-    }
-
+    for(let i=0;i<depth;i++) html+=`<span class="tree-indent" style="width:12px;"></span>`;
+    if(depth>0) html+=`<span class="tree-line">&#9492;</span>`;
     html+=`<span class="tree-dot${isRoot?' root':' sub'}"></span>`;
     html+=`<span class="tree-name">${esc(name)}</span>`;
     if(chart.version) html+=`<span class="tree-ver">${esc(chart.version)}</span>`;
-    html+=`<span class="builtin-tag">built-in</span>`;
+    if(!isUser&&isBuiltin(name)) html+=`<span class="builtin-tag">built-in</span>`;
     if(hasData) html+=`<span class="tree-count">${countKeys(name)}</span>`;
+    if(canDelete) html+=`<span class="tree-del" data-del="${esc(name)}" title="Delete${deps.length?' (includes subcharts)':''}">&#215;</span>`;
     html+=`</div>`;
 
-    // Recurse into dependencies
     for(const dep of deps){
-      if(manifest.charts[dep]){
-        html+=renderTreeNode(dep, depth+1);
-      } else {
-        // Dependency exists in manifest but no chart data found
-        html+=`<div class="tree-node${selected===dep?' active':''}" data-name="${esc(dep)}">`;
-        for(let i=0;i<=depth;i++) html+=`<span class="tree-indent" style="width:12px;"></span>`;
-        html+=`<span class="tree-line">&#9492;</span>`;
-        html+=`<span class="tree-dot sub"></span>`;
-        html+=`<span class="tree-name" style="color:var(--text3);">${esc(dep)}</span>`;
-        html+=`<span class="builtin-tag">built-in</span>`;
-        html+=`</div>`;
+      if(charts[dep]&&!rendered.has(dep)){
+        html+=renderTreeNode(dep,depth+1,isUser,rendered);
       }
     }
-
     return html;
   }
 
   // ── Render values ──
   function renderValues(){
-    const box=$('scrollbox');
-    const statusLine=$('status-line');
-    const query=$('search').value.trim();
+    const box=$('scrollbox'),info=$('match-info')||$('status-line'),query=$('search').value.trim();
     $('clear-x').style.display=query?'block':'none';
-
+    const statusLine=$('status-line');
     const names=allChartNames();
 
     if(!names.length){
       $('val-name').textContent='No charts loaded';
-      $('val-desc').textContent='Add values files or bake them into the Docker image.';
+      $('val-desc').textContent='Use the buttons below the tree to add values.';
       statusLine.innerHTML='';
       box.innerHTML='<div class="empty"><span>&#9096;</span>No values to display</div>';
       return;
     }
 
-    // Determine which charts to show
     let showCharts;
     if(selected==='__all__'){
       showCharts=names;
       $('val-name').textContent='All charts';
       $('val-desc').textContent=names.length+' charts loaded';
-    } else if(selected && getData(selected)){
+    }else if(selected&&getData(selected)){
       showCharts=[selected];
-      const chart=manifest.charts[selected];
+      const charts=getFullManifest();
+      const chart=charts[selected];
       $('val-name').innerHTML=esc(selected)+(isBuiltin(selected)?' <span class="builtin-tag">built-in</span>':'');
       $('val-desc').textContent=chart?chart.description||'':'';
-    } else {
-      showCharts=names;
-      selected='__all__';
-      $('val-name').textContent='All charts';
-      $('val-desc').textContent='';
+    }else{
+      showCharts=names;selected='__all__';
+      $('val-name').textContent='All charts';$('val-desc').textContent='';
     }
 
-    let html='';
-    let totalMatches=0;
+    let html='',totalMatches=0;
     const q=query.toLowerCase();
 
     for(const name of showCharts){
       const data=getData(name);
       if(!data)continue;
       const flat=[];flatten(data,'',flat);
-
       let filtered=flat;
       if(query) filtered=flat.filter(e=>e.path.toLowerCase().includes(q)||String(e.val).toLowerCase().includes(q));
       if(query&&!filtered.length)continue;
       totalMatches+=filtered.length;
 
-      // Chart section header (when showing multiple)
       if(showCharts.length>1){
         html+=`<div style="padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1;">`;
         html+=esc(name);
@@ -489,7 +548,6 @@
       box.innerHTML=`<div class="empty">No matches for "${esc(query)}"</div>`;
       return;
     }
-
     statusLine.innerHTML=query
       ?`<span class="ct">${totalMatches}</span> match${totalMatches===1?'':'es'} for "${esc(query)}"`
       :`<span class="ct">${totalMatches}</span> total keys`;
@@ -530,10 +588,11 @@
   };
 
   // ── Events: Add chart folder ──
-  let pendingChartData=null;
+  let pendingChartEntries={};
+  let pendingChartRoot=null;
 
   $('add-chart-btn').onclick=()=>{$('add-chart-panel').classList.toggle('open');$('add-panel').classList.remove('open');};
-  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartData=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';};
+  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartEntries={};pendingChartRoot=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';};
 
   $('chart-folder-in').onchange=async(e)=>{
     const files=Array.from(e.target.files||[]);
@@ -542,9 +601,10 @@
     const statusEl=$('chart-upload-status');
     statusEl.textContent='Scanning chart folder...';
     statusEl.style.color='var(--text2)';
+    pendingChartEntries={};
+    pendingChartRoot=null;
 
     try{
-      // Build a path→content map for Chart.yaml and values.yaml files
       const fileMap={};
       for(const f of files){
         const path=f.webkitRelativePath||f.name;
@@ -554,114 +614,98 @@
         }
       }
 
-      // Find the root Chart.yaml (shortest path)
       const chartYamls=Object.keys(fileMap).filter(p=>p.toLowerCase().endsWith('/chart.yaml')||p.toLowerCase()==='chart.yaml');
       if(!chartYamls.length){
         statusEl.textContent='No Chart.yaml found in the uploaded folder.';
-        statusEl.style.color='var(--red)';
-        return;
+        statusEl.style.color='var(--red)';return;
       }
       chartYamls.sort((a,b)=>a.split('/').length-b.split('/').length);
       const rootChartYaml=chartYamls[0];
-      const rootDir=rootChartYaml.includes('/')?rootChartYaml.substring(0,rootChartYaml.lastIndexOf('/')):'';
 
-      // Helper: get dir from path
       function dirOf(p){return p.includes('/')?p.substring(0,p.lastIndexOf('/')):''; }
 
-      // Recursive chart discovery
-      function discoverChart(chartYamlPath, parent){
+      const tempData={};
+      const tempEntries={};
+
+      function discoverChart(chartYamlPath,parent){
         const dir=dirOf(chartYamlPath);
         const content=fileMap[chartYamlPath];
         if(!content)return;
-
         const meta=jsyaml.load(content)||{};
         const name=meta.name||dir.split('/').pop()||'unknown';
 
-        // Find values.yaml in same dir
         const valuesPath=dir?dir+'/values.yaml':'values.yaml';
         const valuesContent=fileMap[valuesPath];
 
-        const entry={
-          name:name,
-          version:meta.version||'',
-          description:meta.description||'',
-          dependencies:[],
-          values_file:valuesContent?name+'.yaml':null
-        };
+        const entry={name,version:meta.version||'',description:meta.description||'',dependencies:[]};
         if(parent)entry.parent=parent;
 
-        // Store values data
         if(valuesContent){
-          try{userData[name]=jsyaml.load(valuesContent)||{};}catch(e){}
+          try{tempData[name]=jsyaml.load(valuesContent)||{};}catch(e){}
+          entry.values_file=name+'.yaml';
         }
 
-        // Add to manifest
-        manifest.charts[name]=entry;
+        tempEntries[name]=entry;
 
-        // Find dependency names from Chart.yaml
         const deps=meta.dependencies||[];
         if(Array.isArray(deps)){
           for(const d of deps){
-            if(d&&typeof d==='object'&&d.name){
-              entry.dependencies.push(d.alias||d.name);
-            }
+            if(d&&typeof d==='object'&&d.name) entry.dependencies.push(d.alias||d.name);
           }
         }
 
-        // Recurse into subcharts
         const chartsSubdir=dir?dir+'/charts':'charts';
         const subChartYamls=chartYamls.filter(p=>{
           if(p===chartYamlPath)return false;
           const pDir=dirOf(p);
-          // Must be a direct child: chartsSubdir/something/Chart.yaml
           const rel=pDir.substring(chartsSubdir.length+1);
           return pDir.startsWith(chartsSubdir)&&!rel.includes('/');
         });
-
-        for(const subPath of subChartYamls){
-          discoverChart(subPath,name);
-        }
+        for(const subPath of subChartYamls) discoverChart(subPath,name);
       }
 
-      // Reset user manifest for this upload
       const rootMeta=jsyaml.load(fileMap[rootChartYaml])||{};
-      const rootName=rootMeta.name||'chart';
-      manifest.root=rootName;
-
+      pendingChartRoot=rootMeta.name||'chart';
       discoverChart(rootChartYaml,null);
 
-      const chartCount=Object.keys(manifest.charts).length;
-      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(manifest.charts).join(', ')}`;
+      pendingChartEntries={entries:tempEntries,data:tempData,root:pendingChartRoot};
+
+      const chartCount=Object.keys(tempEntries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tempEntries).join(', ')}`;
       statusEl.style.color='var(--green)';
-      pendingChartData=true;
       $('save-chart-btn').disabled=false;
 
     }catch(err){
-      statusEl.textContent='Error parsing chart: '+err.message;
+      statusEl.textContent='Error: '+err.message;
       statusEl.style.color='var(--red)';
     }
   };
 
   $('save-chart-btn').onclick=()=>{
-    if(!pendingChartData)return;
-    toast(`Added chart tree: ${manifest.root}`);
-    $('add-chart-panel').classList.remove('open');
-    pendingChartData=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';
-    selected=manifest.root;
-    renderTree();renderValues();
-  };
+    if(!pendingChartEntries.root)return;
+    const{entries,data,root}=pendingChartEntries;
 
-  $('clear-btn').onclick=()=>{
-    for(const k of Object.keys(userData))delete userData[k];
-    selected=manifest.root||'__all__';$('search').value='';
-    toast('Cleared user-added charts');renderTree();renderValues();
+    // Merge into state without overwriting existing
+    for(const[name,entry] of Object.entries(entries)){
+      userManifestCharts[name]=entry;
+    }
+    for(const[name,vals] of Object.entries(data)){
+      userData[name]=vals;
+    }
+    if(!userRoots.includes(root)) userRoots.push(root);
+
+    toast(`Added chart tree: ${root} (${Object.keys(entries).length} charts)`);
+    $('add-chart-panel').classList.remove('open');
+    pendingChartEntries={};pendingChartRoot=null;
+    $('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';
+    selected=root;
+    renderTree();renderValues();
   };
 
   let t;
   $('search').oninput=()=>{clearTimeout(t);t=setTimeout(renderValues,60);};
   $('clear-x').onclick=()=>{$('search').value='';renderValues();};
 
-  // Boot
   loadBuiltins();
 })();
 </script>
