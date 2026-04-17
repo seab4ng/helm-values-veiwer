@@ -32,6 +32,8 @@
   /* Left panel */
   .tree-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
   .tree-panel-hdr{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg3);}
+  .tree-search{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg2);}
+  .tree-search .search-wrap input{background:var(--bg3);font-size:12px;padding:6px 28px 6px 30px;}
   .tree-content{padding:8px 0;}
 
   .tree-node{display:flex;align-items:center;gap:8px;padding:6px 16px;cursor:pointer;transition:background 0.1s;font-size:13px;position:relative;}
@@ -201,6 +203,13 @@
     <!-- Left: tree panel -->
     <div class="tree-panel">
       <div class="tree-panel-hdr">Chart dependency tree</div>
+      <div class="tree-search">
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="tree-search" placeholder="Filter charts..." />
+          <span class="clear-x" id="tree-clear-x">&times;</span>
+        </div>
+      </div>
       <div class="tree-content" id="tree"></div>
       <div class="tree-actions">
         <div class="tree-action-row">
@@ -247,6 +256,7 @@
   const userManifestCharts = {};  // chart entries added via "Add chart"
   const userRoots = [];           // root names from user-uploaded charts
   let selected = null;
+  let treeQuery = '';
 
   const $=id=>document.getElementById(id);
 
@@ -297,6 +307,25 @@
     const data=getData(name);
     if(!data)return 0;
     const flat=[];flatten(data,'',flat);return flat.length;
+  }
+
+  // ── Tree search helpers ──
+  function treeNorm(s){ return String(s).toLowerCase().replace(/[-_\s]/g,''); }
+  function nodeMatchesQuery(name,q){
+    if(!q) return true;
+    const charts=getFullManifest();
+    const chart=charts[name];
+    const dname=chart?chart.name||displayName(name):displayName(name);
+    const ver=chart&&chart.version?chart.version:'';
+    const nq=treeNorm(q);
+    return treeNorm(dname).includes(nq)||treeNorm(ver).includes(nq);
+  }
+  function subtreeMatchesQuery(name,q){
+    if(!q) return true;
+    if(nodeMatchesQuery(name,q)) return true;
+    const charts=getFullManifest();
+    const chart=charts[name];
+    return !!(chart&&(chart.dependencies||[]).some(d=>subtreeMatchesQuery(d,q)));
   }
 
   // Get all descendants of a chart in the manifest tree
@@ -361,6 +390,9 @@
   function renderTree(){
     const el=$('tree');
     const names=allChartNames();
+    const q=treeQuery;
+
+    $('tree-clear-x').style.display=q?'block':'none';
 
     if(!names.length){
       el.innerHTML='<div style="padding:16px;font-size:13px;color:var(--text3);text-align:center;">No charts loaded</div>';
@@ -369,7 +401,7 @@
 
     let html='';
 
-    // "All charts"
+    // "All charts" — always visible
     html+=`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
       <span class="tree-dot" style="background:var(--cyan);"></span>
       <span class="tree-name">All charts</span>
@@ -380,27 +412,32 @@
 
     // Render built-in tree
     if(manifest.root&&manifest.charts[manifest.root]){
-      const tr=new Set();
-      html+=renderTreeNode(manifest.root,0,false,tr);
-      tr.forEach(n=>allRendered.add(n));
+      if(!q||subtreeMatchesQuery(manifest.root,q)){
+        const tr=new Set();
+        html+=renderTreeNode(manifest.root,0,false,tr,q);
+        tr.forEach(n=>allRendered.add(n));
+      }
     }
 
     // Render user-uploaded chart trees (each gets its own rendered set)
     for(const rootName of userRoots){
       if(!allRendered.has(rootName)&&userManifestCharts[rootName]){
-        const tr=new Set();
-        html+=renderTreeNode(rootName,0,true,tr);
-        tr.forEach(n=>allRendered.add(n));
+        if(!q||subtreeMatchesQuery(rootName,q)){
+          const tr=new Set();
+          html+=renderTreeNode(rootName,0,true,tr,q);
+          tr.forEach(n=>allRendered.add(n));
+        }
       }
     }
 
     // Render flat user-added values (not part of any tree)
     for(const name of Object.keys(userData).sort()){
       if(allRendered.has(name))continue;
-      if(userManifestCharts[name])continue; // part of a tree, shown inside it
+      if(userManifestCharts[name])continue;
+      if(q&&!nodeMatchesQuery(name,q))continue;
       html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
         <span class="tree-dot"></span>
-        <span class="tree-name">${esc(displayName(name))}</span>
+        <span class="tree-name">${q?highlight(displayName(name),q):esc(displayName(name))}</span>
         <span class="tree-count">${countKeys(name)}</span>
         <span class="tree-del" data-del="${esc(name)}" title="Delete">&times;</span>
       </div>`;
@@ -410,13 +447,22 @@
     // Render built-in flat (no tree)
     for(const name of Object.keys(builtinData).sort()){
       if(allRendered.has(name))continue;
+      if(q&&!nodeMatchesQuery(name,q))continue;
       html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
         <span class="tree-dot sub"></span>
-        <span class="tree-name">${esc(name)}</span>
+        <span class="tree-name">${q?highlight(name,q):esc(name)}</span>
         <span class="builtin-tag">built-in</span>
         <span class="tree-count">${countKeys(name)}</span>
       </div>`;
       allRendered.add(name);
+    }
+
+    if(q&&html===`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
+      <span class="tree-dot" style="background:var(--cyan);"></span>
+      <span class="tree-name">All charts</span>
+      <span class="tree-count">${names.length}</span>
+    </div>`){
+      html+='<div style="padding:12px 16px;font-size:12px;color:var(--text3);">No charts match</div>';
     }
 
     el.innerHTML=html;
@@ -439,7 +485,7 @@
     });
   }
 
-  function renderTreeNode(name,depth,isUser,rendered){
+  function renderTreeNode(name,depth,isUser,rendered,q){
     const charts=getFullManifest();
     const chart=charts[name];
     if(!chart)return '';
@@ -448,12 +494,16 @@
     const deps=chart.dependencies||[];
     const isRoot=depth===0;
     const canDelete=isUser||isUserAdded(name);
+    const rawName=chart.name||displayName(name);
+    // If this node itself matches, show full subtree (pass no filter to children)
+    const selfMatches=nodeMatchesQuery(name,q);
+    const childQ=selfMatches?'':q;
 
     let html=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">`;
     for(let i=0;i<depth;i++) html+=`<span class="tree-indent" style="width:12px;"></span>`;
     if(depth>0) html+=`<span class="tree-line">&#9492;</span>`;
     html+=`<span class="tree-dot${isRoot?' root':' sub'}"></span>`;
-    html+=`<span class="tree-name">${esc(chart.name||displayName(name))}</span>`;
+    html+=`<span class="tree-name">${q&&selfMatches?highlight(rawName,q):esc(rawName)}</span>`;
     if(chart.version) html+=`<span class="tree-ver">${esc(chart.version)}</span>`;
     if(!isUser&&isBuiltin(name)) html+=`<span class="builtin-tag">built-in</span>`;
     if(hasData) html+=`<span class="tree-count">${countKeys(name)}</span>`;
@@ -462,7 +512,9 @@
 
     for(const dep of deps){
       if(charts[dep]&&!rendered.has(dep)){
-        html+=renderTreeNode(dep,depth+1,isUser,rendered);
+        if(!childQ||subtreeMatchesQuery(dep,childQ)){
+          html+=renderTreeNode(dep,depth+1,isUser,rendered,childQ);
+        }
       }
     }
     return html;
@@ -696,9 +748,11 @@
     renderTree();renderValues();
   };
 
-  let t;
+  let t,tt;
   $('search').oninput=()=>{clearTimeout(t);t=setTimeout(renderValues,60);};
   $('clear-x').onclick=()=>{$('search').value='';renderValues();};
+  $('tree-search').oninput=()=>{clearTimeout(tt);tt=setTimeout(()=>{treeQuery=$('tree-search').value.trim();renderTree();},60);};
+  $('tree-clear-x').onclick=()=>{$('tree-search').value='';treeQuery='';renderTree();};
 
   loadBuiltins();
 })();
