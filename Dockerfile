@@ -32,12 +32,17 @@ FROM nginx:1.27-alpine
 
 RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf
 
-COPY nginx.conf        /etc/nginx/conf.d/default.conf
-COPY app/index.html    /usr/share/nginx/html/index.html
+COPY nginx.conf              /etc/nginx/conf.d/default.conf
+COPY app/index.html          /usr/share/nginx/html/index.html
+COPY docker-entrypoint.sh    /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # Copy extracted values + manifest from builder
 COPY --from=builder /tmp/values-output/ /usr/share/nginx/html/values/
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+ENV APP_NAME="my app"
+ENV APP_VERSION="1.0.0"
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
