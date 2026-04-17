@@ -125,6 +125,11 @@
   .upload-label:hover{border-color:var(--accent);color:var(--accent);}
   .upload-label input{display:none;}
 
+  .toolbar-item{display:flex;flex-direction:column;gap:2px;}
+  .toolbar-hint{font-size:11px;color:var(--text3);padding-left:2px;}
+  .panel-title{font-size:14px;font-weight:600;margin-bottom:4px;}
+  .panel-desc{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;}
+
   .toast-area{position:fixed;top:16px;right:16px;z-index:100;}
   .toast{
     font-size:12px;padding:8px 14px;border-radius:var(--radius);margin-bottom:6px;
@@ -147,11 +152,21 @@
   </div>
 
   <div class="toolbar">
-    <button class="btn btn-primary" id="add-btn">+ Add values file</button>
+    <div class="toolbar-item">
+      <button class="btn btn-primary" id="add-btn">+ Add values file</button>
+      <span class="toolbar-hint">Single values.yaml — no dependency tree</span>
+    </div>
+    <div class="toolbar-item">
+      <button class="btn btn-primary" id="add-chart-btn">+ Add chart</button>
+      <span class="toolbar-hint">Full chart folder — includes subchart tree</span>
+    </div>
     <button class="btn" id="clear-btn">Clear added</button>
   </div>
 
+  <!-- Panel: add single values file -->
   <div class="add-panel" id="add-panel">
+    <div class="panel-title">Add a values file</div>
+    <div class="panel-desc">Upload or paste a single values.yaml. It will appear as a standalone chart with no dependency tree.</div>
     <label>Chart name</label>
     <input type="text" id="name-in" placeholder="e.g. my-app" />
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
@@ -162,6 +177,21 @@
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" id="save-btn">Save</button>
       <button class="btn" id="cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Panel: add full chart folder -->
+  <div class="add-panel" id="add-chart-panel">
+    <div class="panel-title">Add a chart</div>
+    <div class="panel-desc">Upload a chart folder (with Chart.yaml and charts/ subdirectory). The app will discover all subcharts and build the dependency tree automatically.</div>
+    <label class="upload-label" style="margin-bottom:12px;">
+      &#128194; Select chart folder
+      <input type="file" id="chart-folder-in" webkitdirectory directory multiple />
+    </label>
+    <div id="chart-upload-status" style="font-size:12px;color:var(--text2);min-height:20px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="save-chart-btn" disabled>Save chart</button>
+      <button class="btn" id="cancel-chart-btn">Cancel</button>
     </div>
   </div>
 
@@ -466,8 +496,8 @@
     box.innerHTML=html;
   }
 
-  // ── Events ──
-  $('add-btn').onclick=()=>{$('add-panel').classList.toggle('open');$('name-in').focus();};
+  // ── Events: Add values file ──
+  $('add-btn').onclick=()=>{$('add-panel').classList.toggle('open');$('add-chart-panel').classList.remove('open');$('name-in').focus();};
   $('cancel-btn').onclick=()=>{$('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';};
 
   $('file-in').onchange=async(e)=>{
@@ -497,6 +527,128 @@
       $('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';
       renderTree();renderValues();
     }catch(e){toast('YAML parse error: '+(e.reason||e.message),true);}
+  };
+
+  // ── Events: Add chart folder ──
+  let pendingChartData=null;
+
+  $('add-chart-btn').onclick=()=>{$('add-chart-panel').classList.toggle('open');$('add-panel').classList.remove('open');};
+  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartData=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';};
+
+  $('chart-folder-in').onchange=async(e)=>{
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+
+    const statusEl=$('chart-upload-status');
+    statusEl.textContent='Scanning chart folder...';
+    statusEl.style.color='var(--text2)';
+
+    try{
+      // Build a path→content map for Chart.yaml and values.yaml files
+      const fileMap={};
+      for(const f of files){
+        const path=f.webkitRelativePath||f.name;
+        const lower=path.toLowerCase();
+        if(lower.endsWith('/chart.yaml')||lower.endsWith('/values.yaml')||lower==='chart.yaml'||lower==='values.yaml'){
+          fileMap[path]=await f.text();
+        }
+      }
+
+      // Find the root Chart.yaml (shortest path)
+      const chartYamls=Object.keys(fileMap).filter(p=>p.toLowerCase().endsWith('/chart.yaml')||p.toLowerCase()==='chart.yaml');
+      if(!chartYamls.length){
+        statusEl.textContent='No Chart.yaml found in the uploaded folder.';
+        statusEl.style.color='var(--red)';
+        return;
+      }
+      chartYamls.sort((a,b)=>a.split('/').length-b.split('/').length);
+      const rootChartYaml=chartYamls[0];
+      const rootDir=rootChartYaml.includes('/')?rootChartYaml.substring(0,rootChartYaml.lastIndexOf('/')):'';
+
+      // Helper: get dir from path
+      function dirOf(p){return p.includes('/')?p.substring(0,p.lastIndexOf('/')):''; }
+
+      // Recursive chart discovery
+      function discoverChart(chartYamlPath, parent){
+        const dir=dirOf(chartYamlPath);
+        const content=fileMap[chartYamlPath];
+        if(!content)return;
+
+        const meta=jsyaml.load(content)||{};
+        const name=meta.name||dir.split('/').pop()||'unknown';
+
+        // Find values.yaml in same dir
+        const valuesPath=dir?dir+'/values.yaml':'values.yaml';
+        const valuesContent=fileMap[valuesPath];
+
+        const entry={
+          name:name,
+          version:meta.version||'',
+          description:meta.description||'',
+          dependencies:[],
+          values_file:valuesContent?name+'.yaml':null
+        };
+        if(parent)entry.parent=parent;
+
+        // Store values data
+        if(valuesContent){
+          try{userData[name]=jsyaml.load(valuesContent)||{};}catch(e){}
+        }
+
+        // Add to manifest
+        manifest.charts[name]=entry;
+
+        // Find dependency names from Chart.yaml
+        const deps=meta.dependencies||[];
+        if(Array.isArray(deps)){
+          for(const d of deps){
+            if(d&&typeof d==='object'&&d.name){
+              entry.dependencies.push(d.alias||d.name);
+            }
+          }
+        }
+
+        // Recurse into subcharts
+        const chartsSubdir=dir?dir+'/charts':'charts';
+        const subChartYamls=chartYamls.filter(p=>{
+          if(p===chartYamlPath)return false;
+          const pDir=dirOf(p);
+          // Must be a direct child: chartsSubdir/something/Chart.yaml
+          const rel=pDir.substring(chartsSubdir.length+1);
+          return pDir.startsWith(chartsSubdir)&&!rel.includes('/');
+        });
+
+        for(const subPath of subChartYamls){
+          discoverChart(subPath,name);
+        }
+      }
+
+      // Reset user manifest for this upload
+      const rootMeta=jsyaml.load(fileMap[rootChartYaml])||{};
+      const rootName=rootMeta.name||'chart';
+      manifest.root=rootName;
+
+      discoverChart(rootChartYaml,null);
+
+      const chartCount=Object.keys(manifest.charts).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(manifest.charts).join(', ')}`;
+      statusEl.style.color='var(--green)';
+      pendingChartData=true;
+      $('save-chart-btn').disabled=false;
+
+    }catch(err){
+      statusEl.textContent='Error parsing chart: '+err.message;
+      statusEl.style.color='var(--red)';
+    }
+  };
+
+  $('save-chart-btn').onclick=()=>{
+    if(!pendingChartData)return;
+    toast(`Added chart tree: ${manifest.root}`);
+    $('add-chart-panel').classList.remove('open');
+    pendingChartData=null;$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';
+    selected=manifest.root;
+    renderTree();renderValues();
   };
 
   $('clear-btn').onclick=()=>{
