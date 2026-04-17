@@ -1,0 +1,12 @@
+apiVersion: v2
+name: my-platform
+version: 1.0.0
+description: Platform umbrella chart
+type: application
+dependencies:
+  - name: argo-cd
+    version: 5.46.0
+    repository: https://argoproj.github.io/argo-helm
+  - name: cert-manager
+    version: 1.14.4
+    repository: https://charts.jetstack.io

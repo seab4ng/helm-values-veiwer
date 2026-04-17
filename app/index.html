@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helm Values Viewer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#0e1117;--bg2:#161b22;--bg3:#1c2129;--bg4:#21262d;
+    --border:#30363d;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+    --accent:#58a6ff;--accent-dim:#1f3a5f;
+    --green:#3fb950;--green-dim:#1a3a2a;
+    --purple:#bc8cff;--purple-dim:#2d1f4e;
+    --amber:#d29922;--red:#f85149;--cyan:#76e4f7;
+    --font:'Outfit',-apple-system,sans-serif;
+    --mono:'JetBrains Mono','Fira Code',monospace;
+    --radius:8px;
+  }
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.5;}
+  .shell{max-width:1200px;margin:0 auto;padding:1.5rem;}
+
+  /* Header */
+  .hdr{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
+  .hdr-icon{width:38px;height:38px;background:var(--accent-dim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .hdr h1{font-size:20px;font-weight:600;letter-spacing:-0.5px;}
+  .hdr p{font-size:13px;color:var(--text2);margin-top:1px;}
+
+  /* Layout: tree left, values right */
+  .main{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;align-items:start;}
+  @media(max-width:768px){.main{grid-template-columns:1fr;}}
+
+  /* Left panel - tree */
+  .tree-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .tree-panel-hdr{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg3);}
+  .tree-content{padding:8px 0;}
+
+  .tree-node{display:flex;align-items:center;gap:8px;padding:6px 16px;cursor:pointer;transition:background 0.1s;font-size:13px;}
+  .tree-node:hover{background:var(--bg3);}
+  .tree-node.active{background:var(--accent-dim);color:var(--accent);}
+  .tree-node.active .tree-dot{background:var(--accent);}
+  .tree-node.active .tree-count{background:var(--accent);color:var(--bg);}
+
+  .tree-indent{flex-shrink:0;}
+  .tree-line{color:var(--text3);font-size:12px;flex-shrink:0;width:16px;text-align:center;}
+  .tree-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--text3);}
+  .tree-dot.root{background:var(--accent);width:10px;height:10px;}
+  .tree-dot.sub{background:var(--purple);}
+  .tree-name{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tree-ver{font-size:11px;color:var(--text3);font-family:var(--mono);}
+  .tree-count{font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text2);flex-shrink:0;}
+
+  /* Right panel - values */
+  .values-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .values-hdr{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+  .values-hdr-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .values-chart-name{font-size:15px;font-weight:600;}
+  .values-chart-desc{font-size:12px;color:var(--text3);margin-bottom:10px;}
+  .builtin-tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--purple-dim);color:var(--purple);text-transform:uppercase;letter-spacing:0.4px;font-weight:500;}
+  .search-wrap{position:relative;}
+  .search-wrap input{
+    width:100%;padding:8px 12px 8px 34px;
+    font-family:var(--font);font-size:13px;
+    border-radius:var(--radius);border:1px solid var(--border);
+    background:var(--bg);color:var(--text);outline:none;
+    transition:border-color 0.15s;
+  }
+  .search-wrap input:focus{border-color:var(--accent);}
+  .search-wrap input::placeholder{color:var(--text3);}
+  .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none;}
+  .clear-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);cursor:pointer;font-size:16px;display:none;line-height:1;}
+  .clear-x:hover{color:var(--text);}
+
+  .status-line{font-size:12px;color:var(--text2);padding:8px 16px;border-bottom:1px solid var(--border);min-height:32px;display:flex;align-items:center;gap:6px;}
+  .status-line .ct{color:var(--accent);font-weight:500;}
+
+  .scrollbox{max-height:70vh;overflow-y:auto;}
+  .scrollbox::-webkit-scrollbar{width:6px;}
+  .scrollbox::-webkit-scrollbar-track{background:transparent;}
+  .scrollbox::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+  .row{display:flex;align-items:baseline;gap:8px;padding:3px 16px;font-family:var(--mono);font-size:13px;line-height:1.7;transition:background 0.1s;}
+  .row:hover{background:var(--bg3);}
+  .path{color:var(--text2);word-break:break-all;}
+  .sep{color:var(--text3);flex-shrink:0;margin:0 2px;}
+  .val{word-break:break-all;}
+  .val.str{color:var(--amber);}
+  .val.num{color:var(--green);}
+  .val.bool{color:var(--purple);}
+  .val.null{color:var(--text3);font-style:italic;}
+  .val.arr{color:var(--cyan);}
+  .hl{background:#6e400e;border-radius:3px;padding:0 2px;color:var(--amber);}
+  .empty{color:var(--text2);font-size:14px;text-align:center;padding:3rem 1rem;}
+  .empty span{display:block;font-size:28px;margin-bottom:6px;opacity:0.4;}
+
+  /* Add panel */
+  .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .btn{
+    font-family:var(--font);font-size:12px;font-weight:500;
+    padding:6px 14px;border-radius:var(--radius);
+    border:1px solid var(--border);background:var(--bg2);color:var(--text);
+    cursor:pointer;transition:all 0.15s;
+  }
+  .btn:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+  .btn-primary:hover{background:var(--accent);color:var(--bg);}
+
+  .add-panel{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:12px;animation:slideDown 0.15s ease-out;}
+  @keyframes slideDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+  .add-panel.open{display:block;}
+  .add-panel label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;}
+  .add-panel input[type="text"],.add-panel textarea{
+    font-family:var(--font);font-size:13px;padding:7px 10px;
+    border-radius:var(--radius);border:1px solid var(--border);
+    background:var(--bg3);color:var(--text);width:100%;outline:none;margin-bottom:8px;
+  }
+  .add-panel textarea{font-family:var(--mono);min-height:120px;resize:vertical;}
+  .upload-label{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:12px;color:var(--text2);cursor:pointer;
+    padding:6px 12px;border:1px dashed var(--border);border-radius:var(--radius);
+    margin-bottom:8px;transition:all 0.15s;
+  }
+  .upload-label:hover{border-color:var(--accent);color:var(--accent);}
+  .upload-label input{display:none;}
+
+  .toast-area{position:fixed;top:16px;right:16px;z-index:100;}
+  .toast{
+    font-size:12px;padding:8px 14px;border-radius:var(--radius);margin-bottom:6px;
+    background:var(--green-dim);color:var(--green);border:1px solid #2a5a3a;
+    animation:toastIn 0.2s ease-out,fadeOut 3s 1s ease-in forwards;
+  }
+  .toast.err{background:#3d1416;color:var(--red);border-color:#5a2020;animation:toastIn 0.2s ease-out;}
+  @keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes fadeOut{0%,60%{opacity:1;}100%{opacity:0;display:none;}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="hdr">
+    <div class="hdr-icon">&#9096;</div>
+    <div>
+      <h1>Helm Values Viewer</h1>
+      <p>Chart dependency tree + searchable values</p>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-primary" id="add-btn">+ Add values file</button>
+    <button class="btn" id="clear-btn">Clear added</button>
+  </div>
+
+  <div class="add-panel" id="add-panel">
+    <label>Chart name</label>
+    <input type="text" id="name-in" placeholder="e.g. my-app" />
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label class="upload-label">&#128194; Upload .yaml<input type="file" id="file-in" accept=".yaml,.yml,.txt" multiple /></label>
+      <span style="font-size:11px;color:var(--text3);">or paste below</span>
+    </div>
+    <textarea id="yaml-in" placeholder="Paste values.yaml content..."></textarea>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="save-btn">Save</button>
+      <button class="btn" id="cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Left: dependency tree -->
+    <div class="tree-panel">
+      <div class="tree-panel-hdr">Chart dependency tree</div>
+      <div class="tree-content" id="tree"></div>
+    </div>
+
+    <!-- Right: values -->
+    <div class="values-panel">
+      <div class="values-hdr" id="values-hdr">
+        <div class="values-hdr-top">
+          <span class="values-chart-name" id="val-name">Select a chart</span>
+        </div>
+        <div class="values-chart-desc" id="val-desc"></div>
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="search" placeholder="Search keys or values... e.g. image, port, replica" />
+          <span class="clear-x" id="clear-x">&times;</span>
+        </div>
+      </div>
+      <div class="status-line" id="status-line"></div>
+      <div class="scrollbox" id="scrollbox"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-area" id="toast-area"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<script>
+(function(){
+  // State
+  let manifest = { root: null, charts: {} };
+  const builtinData = {};   // chart_name -> parsed yaml
+  const userData = {};       // chart_name -> parsed yaml
+  let selected = null;       // currently selected chart name, or '__all__'
+
+  const $=id=>document.getElementById(id);
+
+  // ── Toast ──
+  function toast(msg,err){
+    const el=document.createElement('div');
+    el.className='toast'+(err?' err':'');
+    el.textContent=msg;
+    $('toast-area').appendChild(el);
+    setTimeout(()=>el.remove(), err?6000:4000);
+  }
+
+  // ── Load built-in data from manifest.json ──
+  async function loadBuiltins(){
+    try{
+      const resp=await fetch('/values/manifest.json');
+      if(!resp.ok) return;
+      manifest=await resp.json();
+
+      for(const[name,chart] of Object.entries(manifest.charts)){
+        if(!chart.values_file) continue;
+        try{
+          const r=await fetch('/values/'+chart.values_file);
+          if(!r.ok) continue;
+          builtinData[name]=jsyaml.load(await r.text())||{};
+        }catch(e){}
+      }
+    }catch(e){}
+
+    if(manifest.root) selected=manifest.root;
+    else if(Object.keys(builtinData).length) selected=Object.keys(builtinData).sort()[0];
+    renderTree();
+    renderValues();
+  }
+
+  // ── Flatten YAML to dotted paths ──
+  function flatten(obj,prefix,out){
+    if(obj===null||obj===undefined){out.push({path:prefix,val:null,type:'null'});return;}
+    if(Array.isArray(obj)){
+      if(!obj.length){out.push({path:prefix,val:'[]',type:'arr'});return;}
+      obj.forEach((v,i)=>flatten(v,prefix+'['+i+']',out));return;
+    }
+    if(typeof obj==='object'){
+      const keys=Object.keys(obj);
+      if(!keys.length){out.push({path:prefix,val:'{}',type:'arr'});return;}
+      keys.forEach(k=>flatten(obj[k],prefix?prefix+'.'+k:k,out));return;
+    }
+    let type='str';
+    if(typeof obj==='number')type='num';
+    else if(typeof obj==='boolean')type='bool';
+    out.push({path:prefix,val:String(obj),type});
+  }
+
+  function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+  function highlight(text,query){
+    if(!query)return esc(text);
+    const lower=String(text).toLowerCase(),q=query.toLowerCase();
+    let result='',i=0;
+    while(i<lower.length){
+      const idx=lower.indexOf(q,i);
+      if(idx===-1){result+=esc(text.slice(i));break;}
+      result+=esc(text.slice(i,idx))+'<span class="hl">'+esc(text.slice(idx,idx+q.length))+'</span>';
+      i=idx+q.length;
+    }
+    return result;
+  }
+
+  function getData(name){
+    return userData[name] || builtinData[name] || null;
+  }
+
+  function isBuiltin(name){
+    return !!builtinData[name] && !userData[name];
+  }
+
+  function allChartNames(){
+    const s=new Set([...Object.keys(builtinData),...Object.keys(userData)]);
+    return [...s].sort();
+  }
+
+  function countKeys(name){
+    const data=getData(name);
+    if(!data)return 0;
+    const flat=[];flatten(data,'',flat);return flat.length;
+  }
+
+  // ── Render dependency tree ──
+  function renderTree(){
+    const el=$('tree');
+    const names=allChartNames();
+
+    if(!names.length){
+      el.innerHTML='<div style="padding:16px;font-size:13px;color:var(--text3);text-align:center;">No charts loaded</div>';
+      return;
+    }
+
+    let html='';
+
+    // "All charts" option
+    html+=`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
+      <span class="tree-dot" style="background:var(--cyan);"></span>
+      <span class="tree-name">All charts</span>
+      <span class="tree-count">${names.length}</span>
+    </div>`;
+
+    // If we have a manifest with a root, render as a tree
+    if(manifest.root && manifest.charts[manifest.root]){
+      html+=renderTreeNode(manifest.root, 0);
+
+      // Also render user-added charts that aren't in the manifest
+      for(const name of Object.keys(userData).sort()){
+        if(!manifest.charts[name]){
+          html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
+            <span class="tree-dot"></span>
+            <span class="tree-name">${esc(name)}</span>
+            <span class="tree-count">${countKeys(name)}</span>
+          </div>`;
+        }
+      }
+    } else {
+      // No manifest tree - just flat list
+      for(const name of names){
+        html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
+          <span class="tree-dot${isBuiltin(name)?' sub':''}"></span>
+          <span class="tree-name">${esc(name)}</span>
+          ${isBuiltin(name)?'<span class="builtin-tag">built-in</span>':''}
+          <span class="tree-count">${countKeys(name)}</span>
+        </div>`;
+      }
+    }
+
+    el.innerHTML=html;
+
+    // Click handlers
+    el.querySelectorAll('.tree-node').forEach(node=>{
+      node.addEventListener('click',()=>{
+        selected=node.dataset.name;
+        renderTree();
+        renderValues();
+      });
+    });
+  }
+
+  function renderTreeNode(name, depth){
+    const chart=manifest.charts[name];
+    if(!chart) return '';
+    const hasData=!!getData(name);
+    const deps=chart.dependencies||[];
+    const isRoot=depth===0;
+
+    let html=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">`;
+
+    // Indentation
+    for(let i=0;i<depth;i++){
+      html+=`<span class="tree-indent" style="width:12px;"></span>`;
+    }
+    if(depth>0){
+      html+=`<span class="tree-line">&#9492;</span>`;
+    }
+
+    html+=`<span class="tree-dot${isRoot?' root':' sub'}"></span>`;
+    html+=`<span class="tree-name">${esc(name)}</span>`;
+    if(chart.version) html+=`<span class="tree-ver">${esc(chart.version)}</span>`;
+    html+=`<span class="builtin-tag">built-in</span>`;
+    if(hasData) html+=`<span class="tree-count">${countKeys(name)}</span>`;
+    html+=`</div>`;
+
+    // Recurse into dependencies
+    for(const dep of deps){
+      if(manifest.charts[dep]){
+        html+=renderTreeNode(dep, depth+1);
+      } else {
+        // Dependency exists in manifest but no chart data found
+        html+=`<div class="tree-node${selected===dep?' active':''}" data-name="${esc(dep)}">`;
+        for(let i=0;i<=depth;i++) html+=`<span class="tree-indent" style="width:12px;"></span>`;
+        html+=`<span class="tree-line">&#9492;</span>`;
+        html+=`<span class="tree-dot sub"></span>`;
+        html+=`<span class="tree-name" style="color:var(--text3);">${esc(dep)}</span>`;
+        html+=`<span class="builtin-tag">built-in</span>`;
+        html+=`</div>`;
+      }
+    }
+
+    return html;
+  }
+
+  // ── Render values ──
+  function renderValues(){
+    const box=$('scrollbox');
+    const statusLine=$('status-line');
+    const query=$('search').value.trim();
+    $('clear-x').style.display=query?'block':'none';
+
+    const names=allChartNames();
+
+    if(!names.length){
+      $('val-name').textContent='No charts loaded';
+      $('val-desc').textContent='Add values files or bake them into the Docker image.';
+      statusLine.innerHTML='';
+      box.innerHTML='<div class="empty"><span>&#9096;</span>No values to display</div>';
+      return;
+    }
+
+    // Determine which charts to show
+    let showCharts;
+    if(selected==='__all__'){
+      showCharts=names;
+      $('val-name').textContent='All charts';
+      $('val-desc').textContent=names.length+' charts loaded';
+    } else if(selected && getData(selected)){
+      showCharts=[selected];
+      const chart=manifest.charts[selected];
+      $('val-name').innerHTML=esc(selected)+(isBuiltin(selected)?' <span class="builtin-tag">built-in</span>':'');
+      $('val-desc').textContent=chart?chart.description||'':'';
+    } else {
+      showCharts=names;
+      selected='__all__';
+      $('val-name').textContent='All charts';
+      $('val-desc').textContent='';
+    }
+
+    let html='';
+    let totalMatches=0;
+    const q=query.toLowerCase();
+
+    for(const name of showCharts){
+      const data=getData(name);
+      if(!data)continue;
+      const flat=[];flatten(data,'',flat);
+
+      let filtered=flat;
+      if(query) filtered=flat.filter(e=>e.path.toLowerCase().includes(q)||String(e.val).toLowerCase().includes(q));
+      if(query&&!filtered.length)continue;
+      totalMatches+=filtered.length;
+
+      // Chart section header (when showing multiple)
+      if(showCharts.length>1){
+        html+=`<div style="padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1;">`;
+        html+=esc(name);
+        if(isBuiltin(name)) html+=` <span class="builtin-tag">built-in</span>`;
+        html+=` <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--accent-dim);color:var(--accent);">${filtered.length} ${query?'matches':'keys'}</span>`;
+        html+=`</div>`;
+      }
+
+      for(const entry of filtered){
+        const pathHtml=query?highlight(entry.path,query):esc(entry.path);
+        const valDisplay=entry.val===null?'null':entry.val;
+        const valHtml=query?highlight(valDisplay,query):esc(valDisplay);
+        html+=`<div class="row"><span class="path">${pathHtml}</span><span class="sep">=</span><span class="val ${entry.type}">${valHtml}</span></div>`;
+      }
+    }
+
+    if(query&&!totalMatches){
+      statusLine.innerHTML='';
+      box.innerHTML=`<div class="empty">No matches for "${esc(query)}"</div>`;
+      return;
+    }
+
+    statusLine.innerHTML=query
+      ?`<span class="ct">${totalMatches}</span> match${totalMatches===1?'':'es'} for "${esc(query)}"`
+      :`<span class="ct">${totalMatches}</span> total keys`;
+    box.innerHTML=html;
+  }
+
+  // ── Events ──
+  $('add-btn').onclick=()=>{$('add-panel').classList.toggle('open');$('name-in').focus();};
+  $('cancel-btn').onclick=()=>{$('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';};
+
+  $('file-in').onchange=async(e)=>{
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    if(files.length>1){
+      let ok=0,fail=0;
+      for(const f of files){
+        try{userData[f.name.replace(/\.(ya?ml|txt)$/i,'')]=jsyaml.load(await f.text())||{};ok++;}
+        catch(e){fail++;}
+      }
+      toast(`Loaded ${ok} file${ok===1?'':'s'}${fail?`, ${fail} failed`:''}`,fail>0&&ok===0);
+      $('add-panel').classList.remove('open');$('file-in').value='';
+      selected='__all__';renderTree();renderValues();return;
+    }
+    $('yaml-in').value=await files[0].text();
+    if(!$('name-in').value)$('name-in').value=files[0].name.replace(/\.(ya?ml|txt)$/i,'');
+  };
+
+  $('save-btn').onclick=()=>{
+    const name=$('name-in').value.trim(),yaml=$('yaml-in').value;
+    if(!name){toast('Name required',true);return;}
+    if(!yaml.trim()){toast('Paste or upload YAML',true);return;}
+    try{
+      userData[name]=jsyaml.load(yaml)||{};
+      selected=name;toast(`Added "${name}"`);
+      $('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';
+      renderTree();renderValues();
+    }catch(e){toast('YAML parse error: '+(e.reason||e.message),true);}
+  };
+
+  $('clear-btn').onclick=()=>{
+    for(const k of Object.keys(userData))delete userData[k];
+    selected=manifest.root||'__all__';$('search').value='';
+    toast('Cleared user-added charts');renderTree();renderValues();
+  };
+
+  let t;
+  $('search').oninput=()=>{clearTimeout(t);t=setTimeout(renderValues,60);};
+  $('clear-x').onclick=()=>{$('search').value='';renderValues();};
+
+  // Boot
+  loadBuiltins();
+})();
+</script>
+</body>
+</html>

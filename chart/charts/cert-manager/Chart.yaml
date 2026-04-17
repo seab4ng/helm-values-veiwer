@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cert-manager
+version: 1.14.4
+description: cert-manager - Automatically provision TLS certificates
+type: application

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: argo-cd
+version: 5.46.0
+description: Argo CD - Declarative GitOps CD for Kubernetes
+type: application
+dependencies:
+  - name: redis
+    version: 18.6.1
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
