@@ -670,7 +670,11 @@
           const rel=pDir.substring(chartsSubdir.length+1);
           return pDir.startsWith(chartsSubdir)&&!rel.includes('/');
         });
-        for(const subPath of subChartYamls) discoverChart(subPath,name);
+        for(const subPath of subChartYamls){
+          const subName=discoverChart(subPath,name);
+          if(subName&&!entry.dependencies.includes(subName)) entry.dependencies.push(subName);
+        }
+        return name;
       }
 
       const rootMeta=jsyaml.load(fileMap[rootChartYaml])||{};
@@ -782,7 +786,11 @@
           const rel=pDir.substring(chartsSubdir.length+1);
           return pDir.startsWith(chartsSubdir)&&!rel.includes('/');
         });
-        for(const subPath of subChartYamls) discoverChartTgz(subPath,name);
+        for(const subPath of subChartYamls){
+          const subName=discoverChartTgz(subPath,name);
+          if(subName&&!entry.dependencies.includes(subName)) entry.dependencies.push(subName);
+        }
+        return name;
       }
 
       const rootMeta=jsyaml.load(fileMap[chartYamls[0]])||{};
