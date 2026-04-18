@@ -268,8 +268,29 @@
     setTimeout(()=>el.remove(),err?6000:4000);
   }
 
+  // ── localStorage persistence ──
+  const LS_KEY='helm-viewer-user-state';
+
+  function saveState(){
+    try{
+      localStorage.setItem(LS_KEY,JSON.stringify({userData,userManifestCharts,userRoots}));
+    }catch(e){}
+  }
+
+  function loadState(){
+    try{
+      const raw=localStorage.getItem(LS_KEY);
+      if(!raw)return;
+      const s=JSON.parse(raw);
+      if(s.userData) Object.assign(userData,s.userData);
+      if(s.userManifestCharts) Object.assign(userManifestCharts,s.userManifestCharts);
+      if(s.userRoots&&Array.isArray(s.userRoots)) userRoots.push(...s.userRoots);
+    }catch(e){}
+  }
+
   // ── Load built-in data ──
   async function loadBuiltins(){
+    loadState();
     try{
       const resp=await fetch('/values/manifest.json');
       if(!resp.ok) return;
@@ -286,6 +307,8 @@
     }catch(e){}
     if(manifest.root) selected=manifest.root;
     else if(Object.keys(builtinData).length) selected=Object.keys(builtinData).sort()[0];
+    else if(userRoots.length) selected=userRoots[0];
+    else if(Object.keys(userData).length) selected=Object.keys(userData).sort()[0];
     renderTree();renderValues();
   }
 
@@ -383,6 +406,7 @@
 
     const count=toDelete.length;
     toast(`Deleted ${count===1?name:name+' + '+( count-1)+' subchart'+(count>2?'s':'')}`);
+    saveState();
     renderTree();renderValues();
   }
 
@@ -606,6 +630,7 @@
         catch(e){fail++;}
       }
       toast(`Loaded ${ok} file${ok===1?'':'s'}${fail?`, ${fail} failed`:''}`,fail>0&&ok===0);
+      saveState();
       $('add-panel').classList.remove('open');$('file-in').value='';
       selected='__all__';renderTree();renderValues();return;
     }
@@ -620,6 +645,7 @@
     try{
       userData[name]=jsyaml.load(yaml)||{};
       selected=name;toast(`Added "${name}"`);
+      saveState();
       $('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';
       renderTree();renderValues();
     }catch(e){toast('YAML parse error: '+(e.reason||e.message),true);}
@@ -741,6 +767,7 @@
     if(!userRoots.includes(root)) userRoots.push(root);
 
     toast(`Added chart tree: ${root} (${Object.keys(entries).length} charts)`);
+    saveState();
     $('add-chart-panel').classList.remove('open');
     pendingChartEntries={};
     $('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';
