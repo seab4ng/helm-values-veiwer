@@ -1,0 +1,5 @@
+image:
+  repository: hashicorp/vault-csi-provider
+  tag: 1.4.1
+hmacSecretName: vault-csi-provider-hmac-key
+logLevel: info

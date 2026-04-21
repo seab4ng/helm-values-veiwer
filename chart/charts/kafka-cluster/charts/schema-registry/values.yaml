@@ -1,0 +1,8 @@
+replicas: 2
+image:
+  repository: confluentinc/cp-schema-registry
+  tag: 7.5.0
+config:
+  kafkaStore:
+    bootstrapServers: kafka-cluster:9092
+  compatibilityLevel: BACKWARD

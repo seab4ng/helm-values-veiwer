@@ -1,0 +1,9 @@
+brokers: 3
+image:
+  repository: confluentinc/cp-kafka
+  tag: 7.5.0
+persistence:
+  size: 500Gi
+listeners:
+  plaintext: 9092
+  tls: 9093

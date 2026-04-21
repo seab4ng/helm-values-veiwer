@@ -1,0 +1,14 @@
+apiVersion: v2
+name: monitoring-stack
+version: 2.5.0
+description: Prometheus + Grafana + Alertmanager bundle
+type: application
+dependencies:
+  - name: prometheus
+    version: 2.51.0
+  - name: grafana
+    version: 10.4.0
+  - name: alertmanager
+    version: 0.27.0
+  - name: node-exporter
+    version: 1.7.0

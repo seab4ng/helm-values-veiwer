@@ -1,0 +1,5 @@
+apiVersion: v2
+name: loki-gateway
+version: 2.9.0
+description: Loki gateway/ingress
+type: application

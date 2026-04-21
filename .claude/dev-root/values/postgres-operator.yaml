@@ -1,0 +1,7 @@
+replicas: 1
+image:
+  repository: registry.opensource.zalan.do/acid/postgres-operator
+  tag: v1.11.0
+configGeneral:
+  workers: 8
+  minInstances: 1

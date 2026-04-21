@@ -1,0 +1,11 @@
+replicas: 1
+image:
+  repository: registry.k8s.io/external-dns/external-dns
+  tag: v0.14.0
+provider: aws
+sources:
+  - service
+  - ingress
+aws:
+  region: us-east-1
+  zoneType: public

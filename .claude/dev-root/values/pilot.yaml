@@ -1,0 +1,11 @@
+replicaCount: 2
+image:
+  repository: docker.io/istio/pilot
+  tag: 1.20.0
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+autoscaleEnabled: true
+autoscaleMin: 1
+autoscaleMax: 5

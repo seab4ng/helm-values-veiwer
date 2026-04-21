@@ -1,0 +1,8 @@
+apiVersion: v2
+name: postgres-operator
+version: 1.11.0
+description: Zalando postgres-operator
+type: application
+dependencies:
+  - name: postgres-backup
+    version: 1.11.0

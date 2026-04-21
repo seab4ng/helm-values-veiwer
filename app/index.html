@@ -89,7 +89,10 @@
   .status-line{font-size:12px;color:var(--text2);padding:8px 16px;border-bottom:1px solid var(--border);min-height:32px;display:flex;align-items:center;gap:6px;}
   .status-line .ct{color:var(--accent);font-weight:500;}
 
-  .scrollbox{max-height:70vh;overflow-y:auto;}
+  /* Values panel: default visible area ~half page; when the list is longer
+     than that, grow up to ~2x (then scroll internally). Mirrors the tree
+     panel's "get longer as you add more" feel without eating the whole page. */
+  .scrollbox{min-height:50vh;max-height:140vh;overflow-y:auto;}
   .scrollbox::-webkit-scrollbar{width:6px;}
   .scrollbox::-webkit-scrollbar-track{background:transparent;}
   .scrollbox::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
@@ -241,8 +244,8 @@
 
 <div class="toast-area" id="toast-area"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+<script src="vendor/js-yaml/dist/js-yaml.min.js"></script>
+<script src="vendor/fflate/umd/index.js"></script>
 <script src="lib.js"></script>
 <script>
 (function(){
@@ -471,6 +474,10 @@
     // Render built-in flat (no tree)
     for(const name of Object.keys(builtinData).sort()){
       if(allRendered.has(name))continue;
+      // Skip subcharts — they belong inside their parent's tree, not at root.
+      // If the tree traversal didn't reach them it's because the parent's
+      // declared dep name doesn't match this chart's Chart.yaml name.
+      if(manifest.charts[name]&&manifest.charts[name].parent)continue;
       if(q&&!nodeMatchesQuery(name,q))continue;
       html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
         <span class="tree-dot sub"></span>
@@ -774,6 +781,35 @@
     selected=root;
     renderTree();renderValues();
   };
+
+  // Keep values panel at least as tall as the tree panel when the tree is
+  // taller. If the values panel is already taller (lots of keys), leave it
+  // alone — the existing min/max-height CSS handles that case.
+  function syncPanelHeights(){
+    const sb=$('scrollbox');
+    if(!sb)return;
+    const tree=document.querySelector('.tree-panel');
+    const values=document.querySelector('.values-panel');
+    if(!tree||!values)return;
+    // Clear any previous override so we measure natural heights.
+    sb.style.minHeight='';
+    sb.style.maxHeight='';
+    const treeH=tree.getBoundingClientRect().height;
+    const valuesH=values.getBoundingClientRect().height;
+    if(treeH>valuesH){
+      const sbH=sb.getBoundingClientRect().height;
+      const nonScroll=valuesH-sbH;
+      const target=Math.max(0,treeH-nonScroll);
+      sb.style.minHeight=target+'px';
+      sb.style.maxHeight=target+'px';
+    }
+  }
+  function queueSync(){requestAnimationFrame(syncPanelHeights);}
+  // Re-sync whenever either panel's layout might change.
+  const _rt=renderTree,_rv=renderValues;
+  renderTree=function(){_rt.apply(this,arguments);queueSync();};
+  renderValues=function(){_rv.apply(this,arguments);queueSync();};
+  window.addEventListener('resize',queueSync);
 
   let t,tt;
   $('search').oninput=()=>{clearTimeout(t);t=setTimeout(renderValues,60);};

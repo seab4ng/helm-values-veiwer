@@ -1,0 +1,8 @@
+apiVersion: v2
+name: grafana
+version: 10.4.0
+description: Grafana dashboards
+type: application
+dependencies:
+  - name: grafana-image-renderer
+    version: 3.9.0

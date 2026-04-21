@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node tests/unit.js)",
+      "Bash(mkdir -p /tmp/values-test)",
+      "Bash(python scripts/extract-chart-data.py chart /tmp/values-test)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/extract-chart-data.py chart /tmp/values-test)",
+      "Bash(bash scripts/gen-demo-charts.sh chart)",
+      "Bash(PYTHONIOENCODING=utf-8 python)",
+      "Bash(ls -la .claude/)",
+      "Bash(ls -la .vscode/)",
+      "Bash(command -v python)",
+      "Bash(command -v docker)",
+      "Bash(docker --version)",
+      "Bash(command -v node)",
+      "Bash(npm install *)",
+      "Bash(mkdir -p .claude/dev-root/vendor .claude/dev-root/values)",
+      "Bash(cp app/lib.js .claude/dev-root/lib.js)",
+      "Bash(cp -r node_modules/js-yaml .claude/dev-root/vendor/js-yaml)",
+      "Bash(cp -r node_modules/fflate .claude/dev-root/vendor/fflate)",
+      "Bash(PYTHONIOENCODING=utf-8 python scripts/extract-chart-data.py chart .claude/dev-root/values)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

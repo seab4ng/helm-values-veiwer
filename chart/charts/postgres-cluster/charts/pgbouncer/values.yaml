@@ -1,0 +1,8 @@
+replicas: 2
+image:
+  repository: edoburu/pgbouncer
+  tag: 1.22.0
+config:
+  poolMode: transaction
+  maxClientConn: 1000
+  defaultPoolSize: 25

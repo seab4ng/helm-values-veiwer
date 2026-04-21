@@ -1,0 +1,380 @@
+{
+  "root": "my-platform",
+  "charts": {
+    "my-platform": {
+      "name": "my-platform",
+      "version": "1.0.0",
+      "description": "Platform umbrella chart",
+      "dependencies": [
+        "argo-cd",
+        "cert-manager",
+        "istio-base",
+        "istio-control",
+        "monitoring-stack",
+        "logging-stack",
+        "postgres-cluster",
+        "kafka-cluster",
+        "ingress-nginx",
+        "external-dns",
+        "vault",
+        "minio"
+      ],
+      "values_file": "my-platform.yaml"
+    },
+    "argo-cd": {
+      "name": "argo-cd",
+      "version": "5.46.0",
+      "description": "Argo CD - Declarative GitOps CD for Kubernetes",
+      "dependencies": [
+        "redis",
+        "dex",
+        "notifications-controller"
+      ],
+      "parent": "my-platform",
+      "values_file": "argo-cd.yaml"
+    },
+    "dex": {
+      "name": "dex",
+      "version": "2.37.0",
+      "description": "Dex OIDC provider for argo-cd SSO",
+      "dependencies": [],
+      "parent": "argo-cd",
+      "values_file": "dex.yaml"
+    },
+    "notifications-controller": {
+      "name": "notifications-controller",
+      "version": "1.2.0",
+      "description": "Argo CD notifications controller",
+      "dependencies": [],
+      "parent": "argo-cd",
+      "values_file": "notifications-controller.yaml"
+    },
+    "redis": {
+      "name": "redis",
+      "version": "18.6.1",
+      "description": "Redis - Open source in-memory data store",
+      "dependencies": [],
+      "parent": "argo-cd",
+      "values_file": "redis.yaml"
+    },
+    "cert-manager": {
+      "name": "cert-manager",
+      "version": "1.14.4",
+      "description": "cert-manager - Automatically provision TLS certificates",
+      "dependencies": [],
+      "parent": "my-platform",
+      "values_file": "cert-manager.yaml"
+    },
+    "external-dns": {
+      "name": "external-dns",
+      "version": "1.14.0",
+      "description": "ExternalDNS controller for managing DNS records",
+      "dependencies": [],
+      "parent": "my-platform",
+      "values_file": "external-dns.yaml"
+    },
+    "ingress-nginx": {
+      "name": "ingress-nginx",
+      "version": "4.10.0",
+      "description": "NGINX ingress controller",
+      "dependencies": [],
+      "parent": "my-platform",
+      "values_file": "ingress-nginx.yaml"
+    },
+    "istio-base": {
+      "name": "istio-base",
+      "version": "1.20.0",
+      "description": "Istio base CRDs and shared configuration",
+      "dependencies": [
+        "istio-cni"
+      ],
+      "parent": "my-platform",
+      "values_file": "istio-base.yaml"
+    },
+    "istio-cni": {
+      "name": "istio-cni",
+      "version": "1.20.0",
+      "description": "Istio CNI plugin for sidecar injection",
+      "dependencies": [],
+      "parent": "istio-base",
+      "values_file": "istio-cni.yaml"
+    },
+    "istio-control": {
+      "name": "istio-control",
+      "version": "1.20.0",
+      "description": "Istio control plane (pilot + citadel)",
+      "dependencies": [
+        "pilot",
+        "citadel"
+      ],
+      "parent": "my-platform",
+      "values_file": "istio-control.yaml"
+    },
+    "citadel": {
+      "name": "citadel",
+      "version": "1.20.0",
+      "description": "Istio Citadel - certificate authority",
+      "dependencies": [],
+      "parent": "istio-control",
+      "values_file": "citadel.yaml"
+    },
+    "pilot": {
+      "name": "pilot",
+      "version": "1.20.0",
+      "description": "Istio Pilot - service discovery and traffic management",
+      "dependencies": [
+        "pilot-discovery"
+      ],
+      "parent": "istio-control",
+      "values_file": "pilot.yaml"
+    },
+    "pilot-discovery": {
+      "name": "pilot-discovery",
+      "version": "1.20.0",
+      "description": "Pilot discovery component - endpoint discovery service",
+      "dependencies": [],
+      "parent": "pilot",
+      "values_file": "pilot-discovery.yaml"
+    },
+    "kafka-cluster": {
+      "name": "kafka-cluster",
+      "version": "3.6.0",
+      "description": "Kafka brokers + zookeeper + ecosystem",
+      "dependencies": [
+        "zookeeper",
+        "schema-registry",
+        "kafka-connect"
+      ],
+      "parent": "my-platform",
+      "values_file": "kafka-cluster.yaml"
+    },
+    "kafka-connect": {
+      "name": "kafka-connect",
+      "version": "7.5.0",
+      "description": "Kafka Connect framework",
+      "dependencies": [
+        "connector-schemas"
+      ],
+      "parent": "kafka-cluster",
+      "values_file": "kafka-connect.yaml"
+    },
+    "connector-schemas": {
+      "name": "connector-schemas",
+      "version": "7.5.0",
+      "description": "Prepackaged connector JAR schemas",
+      "dependencies": [],
+      "parent": "kafka-connect",
+      "values_file": "connector-schemas.yaml"
+    },
+    "schema-registry": {
+      "name": "schema-registry",
+      "version": "7.5.0",
+      "description": "Confluent Schema Registry",
+      "dependencies": [],
+      "parent": "kafka-cluster",
+      "values_file": "schema-registry.yaml"
+    },
+    "zookeeper": {
+      "name": "zookeeper",
+      "version": "3.9.0",
+      "description": "Apache ZooKeeper for Kafka coordination",
+      "dependencies": [],
+      "parent": "kafka-cluster",
+      "values_file": "zookeeper.yaml"
+    },
+    "logging-stack": {
+      "name": "logging-stack",
+      "version": "3.1.0",
+      "description": "Loki + Promtail + fluent-bit logging pipeline",
+      "dependencies": [
+        "loki",
+        "promtail",
+        "fluent-bit"
+      ],
+      "parent": "my-platform",
+      "values_file": "logging-stack.yaml"
+    },
+    "fluent-bit": {
+      "name": "fluent-bit",
+      "version": "2.2.0",
+      "description": "Fluent Bit log collector",
+      "dependencies": [],
+      "parent": "logging-stack",
+      "values_file": "fluent-bit.yaml"
+    },
+    "loki": {
+      "name": "loki",
+      "version": "2.9.0",
+      "description": "Loki log aggregation",
+      "dependencies": [
+        "loki-gateway"
+      ],
+      "parent": "logging-stack",
+      "values_file": "loki.yaml"
+    },
+    "loki-gateway": {
+      "name": "loki-gateway",
+      "version": "2.9.0",
+      "description": "Loki gateway/ingress",
+      "dependencies": [],
+      "parent": "loki",
+      "values_file": "loki-gateway.yaml"
+    },
+    "promtail": {
+      "name": "promtail",
+      "version": "2.9.0",
+      "description": "Promtail log shipper daemonset",
+      "dependencies": [],
+      "parent": "logging-stack",
+      "values_file": "promtail.yaml"
+    },
+    "minio": {
+      "name": "minio",
+      "version": "5.2.0",
+      "description": "MinIO S3-compatible object storage",
+      "dependencies": [
+        "minio-console"
+      ],
+      "parent": "my-platform",
+      "values_file": "minio.yaml"
+    },
+    "minio-console": {
+      "name": "minio-console",
+      "version": "5.2.0",
+      "description": "MinIO web console UI",
+      "dependencies": [],
+      "parent": "minio",
+      "values_file": "minio-console.yaml"
+    },
+    "monitoring-stack": {
+      "name": "monitoring-stack",
+      "version": "2.5.0",
+      "description": "Prometheus + Grafana + Alertmanager bundle",
+      "dependencies": [
+        "prometheus",
+        "grafana",
+        "alertmanager",
+        "node-exporter"
+      ],
+      "parent": "my-platform",
+      "values_file": "monitoring-stack.yaml"
+    },
+    "alertmanager": {
+      "name": "alertmanager",
+      "version": "0.27.0",
+      "description": "Prometheus Alertmanager for routing alerts",
+      "dependencies": [],
+      "parent": "monitoring-stack",
+      "values_file": "alertmanager.yaml"
+    },
+    "grafana": {
+      "name": "grafana",
+      "version": "10.4.0",
+      "description": "Grafana dashboards",
+      "dependencies": [
+        "grafana-image-renderer"
+      ],
+      "parent": "monitoring-stack",
+      "values_file": "grafana.yaml"
+    },
+    "grafana-image-renderer": {
+      "name": "grafana-image-renderer",
+      "version": "3.9.0",
+      "description": "Grafana image renderer for PDFs and PNGs",
+      "dependencies": [],
+      "parent": "grafana",
+      "values_file": "grafana-image-renderer.yaml"
+    },
+    "node-exporter": {
+      "name": "node-exporter",
+      "version": "1.7.0",
+      "description": "Prometheus node-exporter daemonset",
+      "dependencies": [],
+      "parent": "monitoring-stack",
+      "values_file": "node-exporter.yaml"
+    },
+    "prometheus": {
+      "name": "prometheus",
+      "version": "2.51.0",
+      "description": "Prometheus time-series database",
+      "dependencies": [
+        "prometheus-storage"
+      ],
+      "parent": "monitoring-stack",
+      "values_file": "prometheus.yaml"
+    },
+    "prometheus-storage": {
+      "name": "prometheus-storage",
+      "version": "2.51.0",
+      "description": "Prometheus persistent storage config",
+      "dependencies": [],
+      "parent": "prometheus",
+      "values_file": "prometheus-storage.yaml"
+    },
+    "postgres-cluster": {
+      "name": "postgres-cluster",
+      "version": "15.5.0",
+      "description": "PostgreSQL HA cluster",
+      "dependencies": [
+        "pgbouncer",
+        "postgres-operator"
+      ],
+      "parent": "my-platform",
+      "values_file": "postgres-cluster.yaml"
+    },
+    "pgbouncer": {
+      "name": "pgbouncer",
+      "version": "1.22.0",
+      "description": "PgBouncer connection pooler",
+      "dependencies": [],
+      "parent": "postgres-cluster",
+      "values_file": "pgbouncer.yaml"
+    },
+    "postgres-operator": {
+      "name": "postgres-operator",
+      "version": "1.11.0",
+      "description": "Zalando postgres-operator",
+      "dependencies": [
+        "postgres-backup"
+      ],
+      "parent": "postgres-cluster",
+      "values_file": "postgres-operator.yaml"
+    },
+    "postgres-backup": {
+      "name": "postgres-backup",
+      "version": "1.11.0",
+      "description": "Backup sidecar for postgres-operator",
+      "dependencies": [],
+      "parent": "postgres-operator",
+      "values_file": "postgres-backup.yaml"
+    },
+    "vault": {
+      "name": "vault",
+      "version": "1.15.0",
+      "description": "HashiCorp Vault",
+      "dependencies": [
+        "vault-agent-injector"
+      ],
+      "parent": "my-platform",
+      "values_file": "vault.yaml"
+    },
+    "vault-agent-injector": {
+      "name": "vault-agent-injector",
+      "version": "1.15.0",
+      "description": "Vault sidecar injector webhook",
+      "dependencies": [
+        "vault-csi-provider"
+      ],
+      "parent": "vault",
+      "values_file": "vault-agent-injector.yaml"
+    },
+    "vault-csi-provider": {
+      "name": "vault-csi-provider",
+      "version": "1.4.1",
+      "description": "Vault CSI secrets store provider",
+      "dependencies": [],
+      "parent": "vault-agent-injector",
+      "values_file": "vault-csi-provider.yaml"
+    }
+  }
+}

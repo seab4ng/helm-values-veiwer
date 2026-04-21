@@ -1,0 +1,9 @@
+replicas: 1
+image:
+  repository: grafana/grafana-image-renderer
+  tag: 3.9.0
+service:
+  port: 8081
+env:
+  RENDERING_VERBOSE_LOGGING: false
+  RENDERING_TIMING_METRICS: true

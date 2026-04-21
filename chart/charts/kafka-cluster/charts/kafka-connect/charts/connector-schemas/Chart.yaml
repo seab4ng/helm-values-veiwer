@@ -1,0 +1,5 @@
+apiVersion: v2
+name: connector-schemas
+version: 7.5.0
+description: Prepackaged connector JAR schemas
+type: application

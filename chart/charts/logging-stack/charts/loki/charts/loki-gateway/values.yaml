@@ -1,0 +1,8 @@
+replicas: 2
+image:
+  repository: nginxinc/nginx-unprivileged
+  tag: 1.25-alpine
+service:
+  port: 3100
+basicAuth:
+  enabled: false

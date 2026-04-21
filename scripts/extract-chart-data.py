@@ -172,7 +172,16 @@ def discover_chart(chart_dir, output_dir, parent=None, manifest=None):
         # Then recurse into subdirectories
         for item in sorted(os.listdir(charts_subdir)):
             item_path = os.path.join(charts_subdir, item)
-            if os.path.isdir(item_path) and os.path.isfile(os.path.join(item_path, 'Chart.yaml')):
+            sub_chart_yaml = os.path.join(item_path, 'Chart.yaml')
+            if os.path.isdir(item_path) and os.path.isfile(sub_chart_yaml):
+                # Resolve actual subchart name from its Chart.yaml so the
+                # parent's dependency list references the same key used to
+                # store the subchart entry (avoids orphaned subcharts when
+                # the declared dep name differs from Chart.yaml name).
+                sub_meta = parse_yaml_simple(sub_chart_yaml)
+                sub_name = sub_meta.get('name', item)
+                if sub_name not in entry["dependencies"]:
+                    entry["dependencies"].append(sub_name)
                 discover_chart(item_path, output_dir, parent=chart_name, manifest=manifest)
 
     return manifest

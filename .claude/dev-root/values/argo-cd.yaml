@@ -1,0 +1,64 @@
+server:
+  replicas: 1
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v2.10.0
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 443
+  ingress:
+    enabled: false
+    hostname: ""
+    annotations: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+repoServer:
+  replicas: 1
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v2.10.0
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  metrics:
+    enabled: true
+
+controller:
+  replicas: 1
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v2.10.0
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+  auth:
+    enabled: false
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+
+configs:
+  params:
+    server.insecure: true
+    application.namespaces: "*"
+  cm:
+    timeout.reconciliation: 180s

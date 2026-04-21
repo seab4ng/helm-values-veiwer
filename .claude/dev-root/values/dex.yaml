@@ -1,0 +1,11 @@
+replicas: 1
+image:
+  repository: ghcr.io/dexidp/dex
+  tag: v2.37.0
+connectors:
+  - type: github
+    id: github
+    name: GitHub
+ports:
+  http: 5556
+  grpc: 5557
