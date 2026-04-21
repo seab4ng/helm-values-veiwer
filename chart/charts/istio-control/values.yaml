@@ -1,0 +1,7 @@
+global:
+  proxy:
+    image: proxyv2
+    logLevel: warning
+meshConfig:
+  enableTracing: true
+  accessLogFile: /dev/stdout

@@ -1,0 +1,8 @@
+replicas: 3
+image:
+  repository: confluentinc/cp-kafka-connect
+  tag: 7.5.0
+config:
+  groupId: connect-cluster
+  configStorageTopic: connect-configs
+  offsetStorageTopic: connect-offsets

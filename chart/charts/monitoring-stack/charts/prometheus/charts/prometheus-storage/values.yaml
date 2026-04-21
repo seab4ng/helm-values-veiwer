@@ -1,0 +1,6 @@
+persistentVolume:
+  enabled: true
+  size: 50Gi
+  storageClass: fast-ssd
+  accessModes:
+    - ReadWriteOnce

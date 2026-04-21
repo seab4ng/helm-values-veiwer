@@ -1,0 +1,5 @@
+apiVersion: v2
+name: postgres-backup
+version: 1.11.0
+description: Backup sidecar for postgres-operator
+type: application

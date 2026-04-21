@@ -1,0 +1,12 @@
+apiVersion: v2
+name: logging-stack
+version: 3.1.0
+description: Loki + Promtail + fluent-bit logging pipeline
+type: application
+dependencies:
+  - name: loki
+    version: 2.9.0
+  - name: promtail
+    version: 2.9.0
+  - name: fluent-bit
+    version: 2.2.0

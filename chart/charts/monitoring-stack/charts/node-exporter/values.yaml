@@ -1,0 +1,7 @@
+hostNetwork: true
+hostPID: true
+image:
+  repository: prom/node-exporter
+  tag: v1.7.0
+tolerations:
+  - operator: Exists

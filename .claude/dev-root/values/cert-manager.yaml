@@ -1,0 +1,26 @@
+installCRDs: true
+replicaCount: 1
+image:
+  repository: quay.io/jetstack/cert-manager-controller
+  tag: v1.14.4
+  pullPolicy: IfNotPresent
+webhook:
+  replicaCount: 1
+  timeoutSeconds: 10
+  image:
+    repository: quay.io/jetstack/cert-manager-webhook
+    tag: v1.14.4
+cainjector:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: quay.io/jetstack/cert-manager-cainjector
+    tag: v1.14.4
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi

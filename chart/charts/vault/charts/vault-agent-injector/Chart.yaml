@@ -1,0 +1,8 @@
+apiVersion: v2
+name: vault-agent-injector
+version: 1.15.0
+description: Vault sidecar injector webhook
+type: application
+dependencies:
+  - name: vault-csi-provider
+    version: 1.15.0

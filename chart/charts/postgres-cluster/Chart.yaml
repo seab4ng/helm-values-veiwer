@@ -1,0 +1,10 @@
+apiVersion: v2
+name: postgres-cluster
+version: 15.5.0
+description: PostgreSQL HA cluster
+type: application
+dependencies:
+  - name: pgbouncer
+    version: 1.22.0
+  - name: postgres-operator
+    version: 1.11.0

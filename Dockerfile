@@ -1,9 +1,16 @@
 FROM python:3.12-alpine AS builder
 
-RUN pip install --no-cache-dir pyyaml
+# Python for chart extraction + Node/npm to vendor browser libs (js-yaml, fflate)
+# so the UI works in airgapped environments without hitting a CDN.
+RUN apk add --no-cache nodejs npm \
+ && pip install --no-cache-dir pyyaml
 
 COPY scripts/extract-chart-data.py /usr/local/bin/extract-chart-data.py
 RUN chmod +x /usr/local/bin/extract-chart-data.py
+
+# Vendor npm deps once at build time
+COPY package.json /tmp/npm/package.json
+RUN cd /tmp/npm && npm install --omit=dev --no-audit --no-fund
 
 # ══════════════════════════════════════════════════════════════
 # COPY YOUR HELM UMBRELLA CHART HERE
@@ -40,6 +47,11 @@ RUN chmod +x /docker-entrypoint.sh
 
 # Copy extracted values + manifest from builder
 COPY --from=builder /tmp/values-output/ /usr/share/nginx/html/values/
+
+# Copy vendored browser libraries (js-yaml + fflate) for airgap use.
+# index.html references them as vendor/js-yaml/... and vendor/fflate/...
+COPY --from=builder /tmp/npm/node_modules/js-yaml/ /usr/share/nginx/html/vendor/js-yaml/
+COPY --from=builder /tmp/npm/node_modules/fflate/  /usr/share/nginx/html/vendor/fflate/
 
 EXPOSE 8080
 

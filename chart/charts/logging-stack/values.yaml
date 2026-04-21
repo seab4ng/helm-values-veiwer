@@ -1,0 +1,4 @@
+global:
+  logLevel: info
+  retention: 30d
+namespace: logging

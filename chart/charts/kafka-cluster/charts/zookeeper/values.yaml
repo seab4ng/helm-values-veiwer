@@ -1,0 +1,9 @@
+replicas: 3
+image:
+  repository: zookeeper
+  tag: 3.9.0
+persistence:
+  size: 20Gi
+config:
+  tickTime: 2000
+  initLimit: 10

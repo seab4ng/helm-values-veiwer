@@ -1,0 +1,5 @@
+apiVersion: v2
+name: zookeeper
+version: 3.9.0
+description: Apache ZooKeeper for Kafka coordination
+type: application

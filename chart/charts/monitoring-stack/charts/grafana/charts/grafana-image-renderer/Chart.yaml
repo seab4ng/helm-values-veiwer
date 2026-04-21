@@ -1,0 +1,5 @@
+apiVersion: v2
+name: grafana-image-renderer
+version: 3.9.0
+description: Grafana image renderer for PDFs and PNGs
+type: application

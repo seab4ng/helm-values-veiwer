@@ -1,0 +1,10 @@
+replicas: 3
+image:
+  repository: grafana/loki
+  tag: 2.9.0
+persistence:
+  size: 100Gi
+storageConfig:
+  aws:
+    region: us-east-1
+    bucketnames: loki-chunks

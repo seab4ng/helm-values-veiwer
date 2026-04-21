@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helm Values Viewer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#0e1117;--bg2:#161b22;--bg3:#1c2129;--bg4:#21262d;
+    --border:#30363d;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+    --accent:#58a6ff;--accent-dim:#1f3a5f;
+    --green:#3fb950;--green-dim:#1a3a2a;
+    --purple:#bc8cff;--purple-dim:#2d1f4e;
+    --amber:#d29922;--red:#f85149;--cyan:#76e4f7;
+    --font:'Outfit',-apple-system,sans-serif;
+    --mono:'JetBrains Mono','Fira Code',monospace;
+    --radius:8px;
+  }
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.5;}
+  .shell{max-width:1200px;margin:0 auto;padding:1.5rem;}
+
+  .hdr{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);}
+  .hdr-icon{width:38px;height:38px;background:var(--accent-dim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+  .hdr h1{font-size:20px;font-weight:600;letter-spacing:-0.5px;}
+  .hdr p{font-size:13px;color:var(--text2);margin-top:1px;}
+
+  .main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:16px;align-items:start;}
+  @media(max-width:768px){.main{grid-template-columns:1fr;}}
+
+  /* Left panel */
+  .tree-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .tree-panel-hdr{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg3);}
+  .tree-search{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg2);}
+  .tree-search .search-wrap input{background:var(--bg3);font-size:12px;padding:6px 28px 6px 30px;}
+  .tree-content{padding:8px 0;}
+
+  .tree-node{display:flex;align-items:center;gap:8px;padding:6px 16px;cursor:pointer;transition:background 0.1s;font-size:13px;position:relative;}
+  .tree-node:hover{background:var(--bg3);}
+  .tree-node.active{background:var(--accent-dim);color:var(--accent);}
+  .tree-node.active .tree-dot{background:var(--accent);}
+  .tree-node.active .tree-count{background:var(--accent);color:var(--bg);}
+
+  .tree-indent{flex-shrink:0;}
+  .tree-line{color:var(--text3);font-size:12px;flex-shrink:0;width:16px;text-align:center;}
+  .tree-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:var(--text3);}
+  .tree-dot.root{background:var(--accent);width:10px;height:10px;}
+  .tree-dot.sub{background:var(--purple);}
+  .tree-name{flex:1;font-weight:500;word-break:break-word;}
+  .tree-ver{font-size:11px;color:var(--text3);font-family:var(--mono);}
+  .tree-count{font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text2);flex-shrink:0;}
+  .builtin-tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--purple-dim);color:var(--purple);text-transform:uppercase;letter-spacing:0.4px;font-weight:500;}
+
+  .tree-del{
+    flex-shrink:0;width:20px;height:20px;border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;color:var(--text3);cursor:pointer;
+    transition:all 0.15s;opacity:0;
+  }
+  .tree-node:hover .tree-del{opacity:1;}
+  .tree-del:hover{background:#3d1416;color:var(--red);}
+
+  .tree-actions{padding:8px 16px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
+  .tree-action-row{display:flex;align-items:center;gap:8px;}
+  .tree-action-row .btn{flex:1;text-align:center;font-size:11px;padding:5px 8px;}
+  .tree-action-hint{font-size:10px;color:var(--text3);text-align:center;}
+
+  /* Right panel */
+  .values-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .values-hdr{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
+  .values-hdr-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+  .values-chart-name{font-size:15px;font-weight:600;}
+  .values-chart-desc{font-size:12px;color:var(--text3);margin-bottom:10px;}
+  .search-wrap{position:relative;}
+  .search-wrap input{
+    width:100%;padding:8px 12px 8px 34px;
+    font-family:var(--font);font-size:13px;
+    border-radius:var(--radius);border:1px solid var(--border);
+    background:var(--bg);color:var(--text);outline:none;
+    transition:border-color 0.15s;
+  }
+  .search-wrap input:focus{border-color:var(--accent);}
+  .search-wrap input::placeholder{color:var(--text3);}
+  .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none;}
+  .clear-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);cursor:pointer;font-size:16px;display:none;line-height:1;}
+  .clear-x:hover{color:var(--text);}
+
+  .status-line{font-size:12px;color:var(--text2);padding:8px 16px;border-bottom:1px solid var(--border);min-height:32px;display:flex;align-items:center;gap:6px;}
+  .status-line .ct{color:var(--accent);font-weight:500;}
+
+  /* Values panel: default visible area ~half page; when the list is longer
+     than that, grow up to ~2x (then scroll internally). Mirrors the tree
+     panel's "get longer as you add more" feel without eating the whole page. */
+  .scrollbox{min-height:50vh;max-height:140vh;overflow-y:auto;}
+  .scrollbox::-webkit-scrollbar{width:6px;}
+  .scrollbox::-webkit-scrollbar-track{background:transparent;}
+  .scrollbox::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+  .row{display:flex;align-items:baseline;gap:8px;padding:3px 16px;font-family:var(--mono);font-size:13px;line-height:1.7;transition:background 0.1s;}
+  .row:hover{background:var(--bg3);}
+  .path{color:var(--text2);word-break:break-all;}
+  .sep{color:var(--text3);flex-shrink:0;margin:0 2px;}
+  .val{word-break:break-all;}
+  .val.str{color:var(--amber);}
+  .val.num{color:var(--green);}
+  .val.bool{color:var(--purple);}
+  .val.null{color:var(--text3);font-style:italic;}
+  .val.arr{color:var(--cyan);}
+  .hl{background:#6e400e;border-radius:3px;padding:0 2px;color:var(--amber);}
+  .empty{color:var(--text2);font-size:14px;text-align:center;padding:3rem 1rem;}
+  .empty span{display:block;font-size:28px;margin-bottom:6px;opacity:0.4;}
+
+  .btn{
+    font-family:var(--font);font-size:12px;font-weight:500;
+    padding:6px 14px;border-radius:var(--radius);
+    border:1px solid var(--border);background:var(--bg2);color:var(--text);
+    cursor:pointer;transition:all 0.15s;
+  }
+  .btn:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
+  .btn-primary:hover{background:var(--accent);color:var(--bg);}
+
+  .add-panel{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:12px;animation:slideDown 0.15s ease-out;}
+  @keyframes slideDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+  .add-panel.open{display:block;}
+  .add-panel label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;}
+  .add-panel input[type="text"],.add-panel textarea{
+    font-family:var(--font);font-size:13px;padding:7px 10px;
+    border-radius:var(--radius);border:1px solid var(--border);
+    background:var(--bg3);color:var(--text);width:100%;outline:none;margin-bottom:8px;
+  }
+  .add-panel textarea{font-family:var(--mono);min-height:120px;resize:vertical;}
+  .upload-label{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:12px;color:var(--text2);cursor:pointer;
+    padding:6px 12px;border:1px dashed var(--border);border-radius:var(--radius);
+    margin-bottom:8px;transition:all 0.15s;
+  }
+  .upload-label:hover{border-color:var(--accent);color:var(--accent);}
+  .upload-label input{display:none;}
+
+  .panel-title{font-size:14px;font-weight:600;margin-bottom:4px;}
+  .panel-desc{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;}
+
+  .toast-area{position:fixed;top:16px;right:16px;z-index:100;}
+  .toast{
+    font-size:12px;padding:8px 14px;border-radius:var(--radius);margin-bottom:6px;
+    background:var(--green-dim);color:var(--green);border:1px solid #2a5a3a;
+    animation:toastIn 0.2s ease-out,fadeOut 3s 1s ease-in forwards;
+  }
+  .toast.err{background:#3d1416;color:var(--red);border-color:#5a2020;animation:toastIn 0.2s ease-out;}
+  @keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes fadeOut{0%,60%{opacity:1;}100%{opacity:0;display:none;}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="hdr">
+    <div class="hdr-icon">&#9096;</div>
+    <div>
+      <h1>Helm Values Viewer</h1>
+      <p>Chart dependency tree + searchable values</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:2px;letter-spacing:0.2px;">helm-values-viewer &nbsp;·&nbsp; dev</p>
+    </div>
+  </div>
+
+  <!-- Panels (above the main grid, full width) -->
+  <div class="add-panel" id="add-panel">
+    <div class="panel-title">Add a values file</div>
+    <div class="panel-desc">Upload or paste a single values.yaml. Shows as a standalone entry, no subchart tree.</div>
+    <label>Chart name</label>
+    <input type="text" id="name-in" placeholder="e.g. my-app" />
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label class="upload-label">&#128194; Upload .yaml<input type="file" id="file-in" accept=".yaml,.yml,.txt" multiple /></label>
+      <span style="font-size:11px;color:var(--text3);">or paste below</span>
+    </div>
+    <textarea id="yaml-in" placeholder="Paste values.yaml content..."></textarea>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="save-btn">Save</button>
+      <button class="btn" id="cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <div class="add-panel" id="add-chart-panel">
+    <div class="panel-title">Add a chart</div>
+    <div class="panel-desc">Upload a chart folder <em>or</em> a <code>.tgz</code> archive. Discovers all subcharts and builds the dependency tree.</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <label class="upload-label">
+        &#128194; Select chart folder
+        <input type="file" id="chart-folder-in" webkitdirectory directory multiple />
+      </label>
+      <label class="upload-label">
+        &#128230; Upload .tgz
+        <input type="file" id="chart-tgz-in" accept=".tgz,.tar.gz" />
+      </label>
+    </div>
+    <div id="chart-upload-status" style="font-size:12px;color:var(--text2);min-height:20px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" id="save-chart-btn" disabled>Save chart</button>
+      <button class="btn" id="cancel-chart-btn">Cancel</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Left: tree panel -->
+    <div class="tree-panel">
+      <div class="tree-panel-hdr">Chart dependency tree</div>
+      <div class="tree-actions">
+        <div class="tree-action-row">
+          <button class="btn btn-primary" id="add-btn">+ Add values file</button>
+          <button class="btn btn-primary" id="add-chart-btn">+ Add chart</button>
+        </div>
+        <div class="tree-action-hint">Values file = single yaml &nbsp;|&nbsp; Chart = folder with subchart tree</div>
+      </div>
+      <div class="tree-search">
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="tree-search" placeholder="Filter charts..." />
+          <span class="clear-x" id="tree-clear-x">&times;</span>
+        </div>
+      </div>
+      <div class="tree-content" id="tree"></div>
+    </div>
+
+    <!-- Right: values panel -->
+    <div class="values-panel">
+      <div class="values-hdr" id="values-hdr">
+        <div class="values-hdr-top">
+          <span class="values-chart-name" id="val-name">Select a chart</span>
+        </div>
+        <div class="values-chart-desc" id="val-desc"></div>
+        <div class="search-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="search" placeholder="Search keys or values... e.g. image, port, replica" />
+          <span class="clear-x" id="clear-x">&times;</span>
+        </div>
+      </div>
+      <div class="status-line" id="status-line"></div>
+      <div class="scrollbox" id="scrollbox"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-area" id="toast-area"></div>
+
+<script src="vendor/js-yaml/dist/js-yaml.min.js"></script>
+<script src="vendor/fflate/umd/index.js"></script>
+<script src="lib.js"></script>
+<script>
+(function(){
+  const {flatten,esc,highlight,displayName,dirOf,buildChartTree}=HelmLib;
+
+  // State
+  // manifest tracks the dependency tree. Multiple roots supported (userRoots).
+  let manifest = { root: null, charts: {} };
+  const builtinData = {};
+  const userData = {};
+  const userManifestCharts = {};  // chart entries added via "Add chart"
+  const userRoots = [];           // root names from user-uploaded charts
+  let selected = null;
+  let treeQuery = '';
+
+  const $=id=>document.getElementById(id);
+
+  function toast(msg,err){
+    const el=document.createElement('div');
+    el.className='toast'+(err?' err':'');
+    el.textContent=msg;
+    $('toast-area').appendChild(el);
+    setTimeout(()=>el.remove(),err?6000:4000);
+  }
+
+  // ── localStorage persistence ──
+  const LS_KEY='helm-viewer-user-state';
+
+  function saveState(){
+    try{
+      localStorage.setItem(LS_KEY,JSON.stringify({userData,userManifestCharts,userRoots}));
+    }catch(e){}
+  }
+
+  function loadState(){
+    try{
+      const raw=localStorage.getItem(LS_KEY);
+      if(!raw)return;
+      const s=JSON.parse(raw);
+      if(s.userData) Object.assign(userData,s.userData);
+      if(s.userManifestCharts) Object.assign(userManifestCharts,s.userManifestCharts);
+      if(s.userRoots&&Array.isArray(s.userRoots)) userRoots.push(...s.userRoots);
+    }catch(e){}
+  }
+
+  // ── Load built-in data ──
+  async function loadBuiltins(){
+    loadState();
+    try{
+      const resp=await fetch('/values/manifest.json');
+      if(!resp.ok) return;
+      const m=await resp.json();
+      manifest=m;
+      for(const[name,chart] of Object.entries(m.charts)){
+        if(!chart.values_file) continue;
+        try{
+          const r=await fetch('/values/'+chart.values_file);
+          if(!r.ok) continue;
+          builtinData[name]=jsyaml.load(await r.text())||{};
+        }catch(e){}
+      }
+    }catch(e){}
+    if(manifest.root) selected=manifest.root;
+    else if(Object.keys(builtinData).length) selected=Object.keys(builtinData).sort()[0];
+    else if(userRoots.length) selected=userRoots[0];
+    else if(Object.keys(userData).length) selected=Object.keys(userData).sort()[0];
+    renderTree();renderValues();
+  }
+
+  // Merge manifest + userManifest
+  function getFullManifest(){
+    const charts={...manifest.charts,...userManifestCharts};
+    return charts;
+  }
+
+  function getData(name){ return userData[name]||builtinData[name]||null; }
+  function isBuiltin(name){ return !!builtinData[name]&&!userData[name]; }
+  function isUserAdded(name){ return !!userData[name]&&!builtinData[name]; }
+
+  function allChartNames(){
+    const s=new Set([...Object.keys(builtinData),...Object.keys(userData)]);
+    return [...s].sort();
+  }
+  function countKeys(name){
+    const data=getData(name);
+    if(!data)return 0;
+    const flat=[];flatten(data,'',flat);return flat.length;
+  }
+
+  // ── Tree search helpers ──
+  function treeNorm(s){ return String(s).toLowerCase().replace(/[-_\s]/g,''); }
+  function nodeMatchesQuery(name,q){
+    if(!q) return true;
+    const charts=getFullManifest();
+    const chart=charts[name];
+    const dname=chart?chart.name||displayName(name):displayName(name);
+    const ver=chart&&chart.version?chart.version:'';
+    const nq=treeNorm(q);
+    return treeNorm(dname).includes(nq)||treeNorm(ver).includes(nq);
+  }
+  function subtreeMatchesQuery(name,q){
+    if(!q) return true;
+    if(nodeMatchesQuery(name,q)) return true;
+    const charts=getFullManifest();
+    const chart=charts[name];
+    return !!(chart&&(chart.dependencies||[]).some(d=>subtreeMatchesQuery(d,q)));
+  }
+
+  // Get all descendants of a chart in the manifest tree
+  function getDescendants(name){
+    const charts=getFullManifest();
+    const result=[];
+    function walk(n){
+      const c=charts[n];
+      if(!c)return;
+      const deps=c.dependencies||[];
+      for(const d of deps){
+        result.push(d);
+        walk(d);
+      }
+    }
+    walk(name);
+    return result;
+  }
+
+  // Delete a chart and optionally its descendants
+  function deleteChart(name){
+    const charts=getFullManifest();
+    const entry=charts[name];
+    const toDelete=[name];
+
+    // If it has children (is a parent), delete descendants too
+    if(entry&&entry.dependencies&&entry.dependencies.length){
+      toDelete.push(...getDescendants(name));
+    }
+
+    for(const n of toDelete){
+      delete userData[n];
+      delete userManifestCharts[n];
+    }
+
+    // Remove from userRoots
+    const ri=userRoots.indexOf(name);
+    if(ri>-1) userRoots.splice(ri,1);
+
+    // Also remove from parent's dependency list if it's a subchart
+    if(entry&&entry.parent){
+      const parent=charts[entry.parent];
+      if(parent&&parent.dependencies){
+        const idx=parent.dependencies.indexOf(name);
+        if(idx>-1){
+          // Modify the right source
+          if(userManifestCharts[entry.parent]) userManifestCharts[entry.parent].dependencies.splice(idx,1);
+          else if(manifest.charts[entry.parent]) manifest.charts[entry.parent].dependencies.splice(idx,1);
+        }
+      }
+    }
+
+    // If deleted was selected, go to __all__
+    if(toDelete.includes(selected)) selected='__all__';
+
+    const count=toDelete.length;
+    toast(`Deleted ${count===1?name:name+' + '+( count-1)+' subchart'+(count>2?'s':'')}`);
+    saveState();
+    renderTree();renderValues();
+  }
+
+  // ── Render tree ──
+  function renderTree(){
+    const el=$('tree');
+    const names=allChartNames();
+    const q=treeQuery;
+
+    $('tree-clear-x').style.display=q?'block':'none';
+
+    if(!names.length){
+      el.innerHTML='<div style="padding:16px;font-size:13px;color:var(--text3);text-align:center;">No charts loaded</div>';
+      return;
+    }
+
+    let html='';
+
+    // "All charts" — always visible
+    html+=`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
+      <span class="tree-dot" style="background:var(--cyan);"></span>
+      <span class="tree-name">All charts</span>
+      <span class="tree-count">${names.length}</span>
+    </div>`;
+
+    const allRendered=new Set();
+
+    // Render built-in tree
+    if(manifest.root&&manifest.charts[manifest.root]){
+      if(!q||subtreeMatchesQuery(manifest.root,q)){
+        const tr=new Set();
+        html+=renderTreeNode(manifest.root,0,false,tr,q);
+        tr.forEach(n=>allRendered.add(n));
+      }
+    }
+
+    // Render user-uploaded chart trees (each gets its own rendered set)
+    for(const rootName of userRoots){
+      if(!allRendered.has(rootName)&&userManifestCharts[rootName]){
+        if(!q||subtreeMatchesQuery(rootName,q)){
+          const tr=new Set();
+          html+=renderTreeNode(rootName,0,true,tr,q);
+          tr.forEach(n=>allRendered.add(n));
+        }
+      }
+    }
+
+    // Render flat user-added values (not part of any tree)
+    for(const name of Object.keys(userData).sort()){
+      if(allRendered.has(name))continue;
+      if(userManifestCharts[name])continue;
+      if(q&&!nodeMatchesQuery(name,q))continue;
+      html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
+        <span class="tree-dot"></span>
+        <span class="tree-name">${q?highlight(displayName(name),q):esc(displayName(name))}</span>
+        <span class="tree-count">${countKeys(name)}</span>
+        <span class="tree-del" data-del="${esc(name)}" title="Delete">&times;</span>
+      </div>`;
+      allRendered.add(name);
+    }
+
+    // Render built-in flat (no tree)
+    for(const name of Object.keys(builtinData).sort()){
+      if(allRendered.has(name))continue;
+      // Skip subcharts — they belong inside their parent's tree, not at root.
+      // If the tree traversal didn't reach them it's because the parent's
+      // declared dep name doesn't match this chart's Chart.yaml name.
+      if(manifest.charts[name]&&manifest.charts[name].parent)continue;
+      if(q&&!nodeMatchesQuery(name,q))continue;
+      html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
+        <span class="tree-dot sub"></span>
+        <span class="tree-name">${q?highlight(name,q):esc(name)}</span>
+        <span class="builtin-tag">built-in</span>
+        <span class="tree-count">${countKeys(name)}</span>
+      </div>`;
+      allRendered.add(name);
+    }
+
+    if(q&&html===`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
+      <span class="tree-dot" style="background:var(--cyan);"></span>
+      <span class="tree-name">All charts</span>
+      <span class="tree-count">${names.length}</span>
+    </div>`){
+      html+='<div style="padding:12px 16px;font-size:12px;color:var(--text3);">No charts match</div>';
+    }
+
+    el.innerHTML=html;
+
+    // Click: select
+    el.querySelectorAll('.tree-node').forEach(node=>{
+      node.addEventListener('click',(e)=>{
+        if(e.target.classList.contains('tree-del'))return;
+        selected=node.dataset.name;
+        renderTree();renderValues();
+      });
+    });
+
+    // Click: delete
+    el.querySelectorAll('.tree-del').forEach(btn=>{
+      btn.addEventListener('click',(e)=>{
+        e.stopPropagation();
+        deleteChart(btn.dataset.del);
+      });
+    });
+  }
+
+  function renderTreeNode(name,depth,isUser,rendered,q){
+    const charts=getFullManifest();
+    const chart=charts[name];
+    if(!chart)return '';
+    rendered.add(name);
+    const hasData=!!getData(name);
+    const deps=chart.dependencies||[];
+    const isRoot=depth===0;
+    const canDelete=isUser||isUserAdded(name);
+    const rawName=chart.name||displayName(name);
+    // If this node itself matches, show full subtree (pass no filter to children)
+    const selfMatches=nodeMatchesQuery(name,q);
+    const childQ=selfMatches?'':q;
+
+    let html=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">`;
+    for(let i=0;i<depth;i++) html+=`<span class="tree-indent" style="width:12px;"></span>`;
+    if(depth>0) html+=`<span class="tree-line">&#9492;</span>`;
+    html+=`<span class="tree-dot${isRoot?' root':' sub'}"></span>`;
+    html+=`<span class="tree-name">${q&&selfMatches?highlight(rawName,q):esc(rawName)}</span>`;
+    if(chart.version) html+=`<span class="tree-ver">${esc(chart.version)}</span>`;
+    if(!isUser&&isBuiltin(name)) html+=`<span class="builtin-tag">built-in</span>`;
+    if(hasData) html+=`<span class="tree-count">${countKeys(name)}</span>`;
+    if(canDelete) html+=`<span class="tree-del" data-del="${esc(name)}" title="Delete${deps.length?' (includes subcharts)':''}">&#215;</span>`;
+    html+=`</div>`;
+
+    for(const dep of deps){
+      if(charts[dep]&&!rendered.has(dep)){
+        if(!childQ||subtreeMatchesQuery(dep,childQ)){
+          html+=renderTreeNode(dep,depth+1,isUser,rendered,childQ);
+        }
+      }
+    }
+    return html;
+  }
+
+  // ── Render values ──
+  function renderValues(){
+    const box=$('scrollbox'),query=$('search').value.trim();
+    $('clear-x').style.display=query?'block':'none';
+    const statusLine=$('status-line');
+    const names=allChartNames();
+
+    if(!names.length){
+      $('val-name').textContent='No charts loaded';
+      $('val-desc').textContent='Use the buttons below the tree to add values.';
+      statusLine.innerHTML='';
+      box.innerHTML='<div class="empty"><span>&#9096;</span>No values to display</div>';
+      return;
+    }
+
+    let showCharts;
+    if(selected==='__all__'){
+      showCharts=names;
+      $('val-name').textContent='All charts';
+      $('val-desc').textContent=names.length+' charts loaded';
+    }else if(selected&&getData(selected)){
+      // Include the selected chart + all its descendants that have data
+      const descendants=getDescendants(selected).filter(n=>getData(n));
+      showCharts=[selected,...descendants];
+      const charts=getFullManifest();
+      const chart=charts[selected];
+      $('val-name').innerHTML=esc(displayName(selected))+(isBuiltin(selected)?' <span class="builtin-tag">built-in</span>':'');
+      $('val-desc').textContent=chart?chart.description||'':'';
+    }else{
+      showCharts=names;selected='__all__';
+      $('val-name').textContent='All charts';$('val-desc').textContent='';
+    }
+
+    let html='',totalMatches=0;
+    const q=query.toLowerCase();
+
+    for(const name of showCharts){
+      const data=getData(name);
+      if(!data)continue;
+      const flat=[];flatten(data,'',flat);
+      let filtered=flat;
+      if(query) filtered=flat.filter(e=>e.path.toLowerCase().includes(q)||String(e.val).toLowerCase().includes(q));
+      if(query&&!filtered.length)continue;
+      totalMatches+=filtered.length;
+
+      if(showCharts.length>1){
+        html+=`<div style="padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1;">`;
+        html+=esc(displayName(name));
+        if(isBuiltin(name)) html+=` <span class="builtin-tag">built-in</span>`;
+        html+=` <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--accent-dim);color:var(--accent);">${filtered.length} ${query?'matches':'keys'}</span>`;
+        html+=`</div>`;
+      }
+
+      for(const entry of filtered){
+        const pathHtml=query?highlight(entry.path,query):esc(entry.path);
+        const valDisplay=entry.val===null?'null':entry.val;
+        const valHtml=query?highlight(valDisplay,query):esc(valDisplay);
+        html+=`<div class="row"><span class="path">${pathHtml}</span><span class="sep">=</span><span class="val ${entry.type}">${valHtml}</span></div>`;
+      }
+    }
+
+    if(query&&!totalMatches){
+      statusLine.innerHTML='';
+      box.innerHTML=`<div class="empty">No matches for "${esc(query)}"</div>`;
+      return;
+    }
+    statusLine.innerHTML=query
+      ?`<span class="ct">${totalMatches}</span> match${totalMatches===1?'':'es'} for "${esc(query)}"`
+      :`<span class="ct">${totalMatches}</span> total keys`;
+    box.innerHTML=html;
+  }
+
+  // ── Events: Add values file ──
+  $('add-btn').onclick=()=>{$('add-panel').classList.toggle('open');$('add-chart-panel').classList.remove('open');$('name-in').focus();};
+  $('cancel-btn').onclick=()=>{$('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';};
+
+  $('file-in').onchange=async(e)=>{
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+    if(files.length>1){
+      let ok=0,fail=0;
+      for(const f of files){
+        try{userData[f.name.replace(/\.(ya?ml|txt)$/i,'')]=jsyaml.load(await f.text())||{};ok++;}
+        catch(e){fail++;}
+      }
+      toast(`Loaded ${ok} file${ok===1?'':'s'}${fail?`, ${fail} failed`:''}`,fail>0&&ok===0);
+      saveState();
+      $('add-panel').classList.remove('open');$('file-in').value='';
+      selected='__all__';renderTree();renderValues();return;
+    }
+    $('yaml-in').value=await files[0].text();
+    if(!$('name-in').value)$('name-in').value=files[0].name.replace(/\.(ya?ml|txt)$/i,'');
+  };
+
+  $('save-btn').onclick=()=>{
+    const name=$('name-in').value.trim(),yaml=$('yaml-in').value;
+    if(!name){toast('Name required',true);return;}
+    if(!yaml.trim()){toast('Paste or upload YAML',true);return;}
+    try{
+      userData[name]=jsyaml.load(yaml)||{};
+      selected=name;toast(`Added "${name}"`);
+      saveState();
+      $('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';
+      renderTree();renderValues();
+    }catch(e){toast('YAML parse error: '+(e.reason||e.message),true);}
+  };
+
+  // ── Events: Add chart folder ──
+  let pendingChartEntries={};
+
+  $('add-chart-btn').onclick=()=>{$('add-chart-panel').classList.toggle('open');$('add-panel').classList.remove('open');};
+  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartEntries={};$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';};
+
+  $('chart-folder-in').onchange=async(e)=>{
+    const files=Array.from(e.target.files||[]);
+    if(!files.length)return;
+
+    const statusEl=$('chart-upload-status');
+    statusEl.textContent='Scanning chart folder...';
+    statusEl.style.color='var(--text2)';
+    pendingChartEntries={};
+
+    try{
+      const fileMap={};
+      for(const f of files){
+        const path=f.webkitRelativePath||f.name;
+        const lower=path.toLowerCase();
+        if(lower.endsWith('/chart.yaml')||lower.endsWith('/values.yaml')||lower==='chart.yaml'||lower==='values.yaml'){
+          fileMap[path]=await f.text();
+        }
+      }
+
+      const tree=buildChartTree(fileMap,jsyaml.load.bind(jsyaml));
+      pendingChartEntries=tree;
+      const chartCount=Object.keys(tree.entries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tree.entries).map(k=>displayName(k)).join(', ')}`;
+      statusEl.style.color='var(--green)';
+      $('save-chart-btn').disabled=false;
+
+    }catch(err){
+      statusEl.textContent='Error: '+err.message;
+      statusEl.style.color='var(--red)';
+    }
+  };
+
+  // Parse a .tgz buffer into a flat {path: content} map using fflate
+  function parseTgz(buffer){
+    return new Promise((resolve,reject)=>{
+      try{
+        const uint8=new Uint8Array(buffer);
+        fflate.gunzip(uint8,(err,decompressed)=>{
+          if(err)return reject(err);
+          const fileMap={};
+          let off=0;
+          while(off+512<=decompressed.length){
+            // Read tar header
+            const nameBytes=decompressed.slice(off,off+100);
+            let name='';
+            for(let i=0;i<nameBytes.length&&nameBytes[i]!==0;i++) name+=String.fromCharCode(nameBytes[i]);
+            name=name.replace(/^\.\//,'');
+            if(!name){off+=512;continue;}
+            const sizeOctet=decompressed.slice(off+124,off+136);
+            let sizeStr='';
+            for(let i=0;i<sizeOctet.length&&sizeOctet[i]!==0;i++) sizeStr+=String.fromCharCode(sizeOctet[i]);
+            const size=parseInt(sizeStr.trim(),8)||0;
+            const typeFlag=decompressed[off+156];
+            off+=512;
+            if(typeFlag!==53&&typeFlag!==55&&name){ // not directory
+              const lower=name.toLowerCase();
+              if(lower.endsWith('/chart.yaml')||lower.endsWith('/values.yaml')||lower==='chart.yaml'||lower==='values.yaml'){
+                // Strip leading chart-name/ prefix (first path segment) so paths match folder upload convention
+                const parts=name.split('/');
+                const normalized=parts.length>1?parts.slice(1).join('/'):name;
+                if(normalized){
+                  try{fileMap[normalized]=new TextDecoder().decode(decompressed.slice(off,off+size));}catch(e){}
+                }
+              }
+            }
+            off+=Math.ceil(size/512)*512;
+          }
+          resolve(fileMap);
+        });
+      }catch(e){reject(e);}
+    });
+  }
+
+  $('chart-tgz-in').onchange=async(e)=>{
+    const file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    const statusEl=$('chart-upload-status');
+    statusEl.textContent='Reading .tgz...';
+    statusEl.style.color='var(--text2)';
+    pendingChartEntries={};
+    try{
+      const buffer=await file.arrayBuffer();
+      const fileMap=await parseTgz(buffer);
+
+      const tree=buildChartTree(fileMap,jsyaml.load.bind(jsyaml),file.name.replace(/\.(tgz|tar\.gz)$/i,''));
+      pendingChartEntries=tree;
+      const chartCount=Object.keys(tree.entries).length;
+      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tree.entries).map(k=>displayName(k)).join(', ')}`;
+      statusEl.style.color='var(--green)';
+      $('save-chart-btn').disabled=false;
+    }catch(err){
+      statusEl.textContent='Error: '+err.message;
+      statusEl.style.color='var(--red)';
+    }
+  };
+
+  $('save-chart-btn').onclick=()=>{
+    if(!pendingChartEntries.root)return;
+    const{entries,data,root}=pendingChartEntries;
+
+    // Merge into state without overwriting existing
+    for(const[name,entry] of Object.entries(entries)){
+      userManifestCharts[name]=entry;
+    }
+    for(const[name,vals] of Object.entries(data)){
+      userData[name]=vals;
+    }
+    if(!userRoots.includes(root)) userRoots.push(root);
+
+    toast(`Added chart tree: ${root} (${Object.keys(entries).length} charts)`);
+    saveState();
+    $('add-chart-panel').classList.remove('open');
+    pendingChartEntries={};
+    $('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';
+    selected=root;
+    renderTree();renderValues();
+  };
+
+  // Keep values panel at least as tall as the tree panel when the tree is
+  // taller. If the values panel is already taller (lots of keys), leave it
+  // alone — the existing min/max-height CSS handles that case.
+  function syncPanelHeights(){
+    const sb=$('scrollbox');
+    if(!sb)return;
+    const tree=document.querySelector('.tree-panel');
+    const values=document.querySelector('.values-panel');
+    if(!tree||!values)return;
+    // Clear any previous override so we measure natural heights.
+    sb.style.minHeight='';
+    sb.style.maxHeight='';
+    const treeH=tree.getBoundingClientRect().height;
+    const valuesH=values.getBoundingClientRect().height;
+    if(treeH>valuesH){
+      const sbH=sb.getBoundingClientRect().height;
+      const nonScroll=valuesH-sbH;
+      const target=Math.max(0,treeH-nonScroll);
+      sb.style.minHeight=target+'px';
+      sb.style.maxHeight=target+'px';
+    }
+  }
+  function queueSync(){requestAnimationFrame(syncPanelHeights);}
+  // Re-sync whenever either panel's layout might change.
+  const _rt=renderTree,_rv=renderValues;
+  renderTree=function(){_rt.apply(this,arguments);queueSync();};
+  renderValues=function(){_rv.apply(this,arguments);queueSync();};
+  window.addEventListener('resize',queueSync);
+
+  let t,tt;
+  $('search').oninput=()=>{clearTimeout(t);t=setTimeout(renderValues,60);};
+  $('clear-x').onclick=()=>{$('search').value='';renderValues();};
+  $('tree-search').oninput=()=>{clearTimeout(tt);tt=setTimeout(()=>{treeQuery=$('tree-search').value.trim();renderTree();},60);};
+  $('tree-clear-x').onclick=()=>{$('tree-search').value='';treeQuery='';renderTree();};
+
+  loadBuiltins();
+})();
+</script>
+</body>
+</html>

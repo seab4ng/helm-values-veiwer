@@ -1,0 +1,5 @@
+apiVersion: v2
+name: pgbouncer
+version: 1.22.0
+description: PgBouncer connection pooler
+type: application

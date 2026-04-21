@@ -1,0 +1,8 @@
+apiVersion: v2
+name: pilot
+version: 1.20.0
+description: Istio Pilot - service discovery and traffic management
+type: application
+dependencies:
+  - name: pilot-discovery
+    version: 1.20.0

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: dex
+version: 2.37.0
+description: Dex OIDC provider for argo-cd SSO
+type: application
