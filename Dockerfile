@@ -11,6 +11,6 @@ RUN chmod +x /docker-entrypoint.sh
 EXPOSE 8080
 
 ENV APP_NAME="my app"
-ENV APP_VERSION="1.0.0"
+ENV APP_VERSION="none"
 
 ENTRYPOINT ["/docker-entrypoint.sh"]

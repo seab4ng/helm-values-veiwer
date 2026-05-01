@@ -174,6 +174,20 @@
     font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px;
   }
   .warn-bar.hidden{display:none;}
+
+  .session-banner{
+    padding:8px 16px;background:var(--purple-dim);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);flex-wrap:wrap;
+  }
+  .session-banner.hidden{display:none;}
+
+  .maintainer-footer{padding:10px 16px;border-top:1px solid var(--border);background:var(--bg3);}
+  .mf-row{display:flex;align-items:center;gap:8px;font-size:11px;line-height:1.9;}
+  .mf-label{min-width:64px;color:var(--text3);}
+  .mf-val{color:var(--text2);}
+  .mf-link{color:var(--accent);text-decoration:none;}
+  .mf-link:hover{text-decoration:underline;}
+  .mf-ver{font-family:var(--mono);font-size:10px;}
 </style>
 </head>
 <body>
@@ -200,7 +214,16 @@
           <button class="btn btn-primary" id="add-chart-btn">+ Add chart folder</button>
           <button class="btn btn-primary" id="add-yaml-btn">+ Add YAML file</button>
         </div>
+        <div class="tree-action-row">
+          <button class="btn btn-danger" id="clear-all-btn" style="flex:1;text-align:center;font-size:11px;padding:5px 8px;">Clear all</button>
+        </div>
         <div class="tree-action-hint">Chart folder = full tree &nbsp;|&nbsp; YAML file = single file &nbsp;·&nbsp; both support write-back</div>
+      </div>
+      <div id="session-banner" class="session-banner hidden">
+        <span>&#128193;</span>
+        <span id="session-count"></span>
+        <button class="btn btn-primary" id="restore-btn" style="font-size:11px;padding:3px 10px;">Restore session</button>
+        <button class="btn" id="dismiss-banner-btn" style="font-size:11px;padding:3px 10px;">Dismiss</button>
       </div>
       <div class="tree-search">
         <div class="search-wrap">
@@ -210,6 +233,11 @@
         </div>
       </div>
       <div class="tree-content" id="tree"></div>
+      <div class="maintainer-footer">
+        <div class="mf-row"><span class="mf-label">Maintainer</span><span class="mf-val">Yakir Veneci</span></div>
+        <div class="mf-row"><span class="mf-label">GitHub</span><a class="mf-link" href="https://github.com/seab4ng" target="_blank" rel="noopener">seab4ng</a></div>
+        <div class="mf-row"><span class="mf-label">Version</span><span class="mf-val mf-ver">__APP_VERSION__</span></div>
+      </div>
     </div>
 
     <!-- Right: values panel -->
@@ -261,6 +289,88 @@
     if (typeof original === 'boolean') { if (str === 'true') return true; if (str === 'false') return false; return str; }
     if (original === null && str === 'null') return null;
     return str;
+  }
+
+  // ── IndexedDB session persistence ──
+  const DB_NAME = 'vier-session', DB_STORE = 'handles';
+  function openDB() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open(DB_NAME, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore(DB_STORE);
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+  }
+  async function dbPut(key, val) {
+    const db = await openDB();
+    return new Promise((res, rej) => { const tx = db.transaction(DB_STORE,'readwrite'); tx.objectStore(DB_STORE).put(val,key); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
+  }
+  async function dbDelete(key) {
+    const db = await openDB();
+    return new Promise((res, rej) => { const tx = db.transaction(DB_STORE,'readwrite'); tx.objectStore(DB_STORE).delete(key); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
+  }
+  async function dbClear() {
+    const db = await openDB();
+    return new Promise((res, rej) => { const tx = db.transaction(DB_STORE,'readwrite'); tx.objectStore(DB_STORE).clear(); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
+  }
+  async function dbGetAll() {
+    const db = await openDB();
+    return new Promise(res => {
+      const tx = db.transaction(DB_STORE,'readonly'), store = tx.objectStore(DB_STORE);
+      const rows = [], req = store.openCursor();
+      req.onsuccess = e => { const c = e.target.result; if (c) { rows.push({dbKey:c.key,...c.value}); c.continue(); } else res(rows); };
+      req.onerror = () => res([]);
+    });
+  }
+  async function saveHandle(dbKey, type, handle) {
+    try { await dbPut(dbKey, {type, handle, addedAt: Date.now()}); } catch {}
+  }
+  async function checkSavedHandles() {
+    try {
+      const rows = await dbGetAll();
+      if (!rows.length) return;
+      $('session-count').textContent = `${rows.length} saved item${rows.length===1?'':'s'} from last session`;
+      $('session-banner').classList.remove('hidden');
+    } catch {}
+  }
+  async function restoreSession() {
+    $('session-banner').classList.add('hidden');
+    let rows;
+    try { rows = await dbGetAll(); } catch { toast('Could not read saved session', true); return; }
+    rows.sort((a,b) => a.addedAt - b.addedAt);
+    let restored = 0, failed = 0;
+    for (const row of rows) {
+      try {
+        let perm = await row.handle.queryPermission({mode:'readwrite'});
+        if (perm !== 'granted') perm = await row.handle.requestPermission({mode:'readwrite'});
+        if (perm !== 'granted') { failed++; continue; }
+        if (row.type === 'chart') {
+          const result = await scanDir(row.handle, row.handle, '');
+          if (!result) { failed++; continue; }
+          const rootKey = registerEntry(result, null, null);
+          state.selected = rootKey;
+          restored++;
+        } else if (row.type === 'yaml') {
+          const file = await row.handle.getFile();
+          const text = await file.text();
+          const values = jsyaml.load(text) || {};
+          const name = file.name.replace(/\.(ya?ml)$/i,'');
+          const key = name;
+          if (state.charts[key]) { restored++; continue; }
+          state.charts[key] = {key, name, version:'', description:'', rootHandle:null, fileHandle:row.handle, valuesRelPath:file.name, values, subcharts:[], parentKey:null};
+          state.chartOrder.push(key);
+          state.selected = key;
+          restored++;
+        }
+      } catch { failed++; }
+    }
+    if (restored > 0) {
+      state.selected = 'all';
+      toast(`Restored ${restored} item${restored===1?'':'s'}${failed?` (${failed} failed)`:''}`);
+    } else {
+      toast('Could not restore — permission denied', true);
+    }
+    renderTree(); renderValues();
   }
 
   // ── State ──
@@ -414,6 +524,11 @@
   function removeChart(key) {
     const entry = state.charts[key];
     if (!entry) return;
+    // Delete from IndexedDB if root entry
+    if (!entry.parentKey) {
+      const dbKey = entry.fileHandle ? 'yaml::' + key : 'chart::' + key;
+      dbDelete(dbKey).catch(() => {});
+    }
     // Collect this key + all descendant keys
     const toRemove = [];
     function collect(k) {
@@ -565,6 +680,7 @@
       const rootKey = registerEntry(result, null, null);
       state.selected = rootKey;
       const total = countAllDescendants(rootKey);
+      saveHandle('chart::' + rootKey, 'chart', dirHandle);
       toast(`Added "${result.name}" (${total} chart${total === 1 ? '' : 's'})`);
       renderTree();
       renderValues();
@@ -618,6 +734,7 @@
           parentKey: null,
         };
         state.chartOrder.push(key);
+        saveHandle('yaml::' + key, 'yaml', fh);
         added++;
         state.selected = key;
       } catch (e) {
@@ -895,9 +1012,23 @@
   };
   $('tree-clear-x').onclick = () => { $('tree-search').value = ''; renderTree(); };
 
+  // ── Clear all ──
+  $('clear-all-btn').onclick = async () => {
+    if (!state.chartOrder.length) return;
+    state.charts = {}; state.chartOrder = []; state.selected = null; state.selectedVals.clear();
+    try { await dbClear(); } catch {}
+    updateBatchBar(); renderTree(); renderValues();
+    toast('Cleared all charts');
+  };
+
+  // ── Session restore / dismiss ──
+  $('restore-btn').onclick = restoreSession;
+  $('dismiss-banner-btn').onclick = () => $('session-banner').classList.add('hidden');
+
   // ── Initial render ──
   renderTree();
   renderValues();
+  checkSavedHandles();
 })();
 </script>
 </body>
