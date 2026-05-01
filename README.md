@@ -1,4 +1,4 @@
-# Helm Values Viewer
+# Helm Values Editor
 
 A browser-based editor for Helm chart values files. Load a chart folder or standalone values.yaml, search across all keys and nested fields, select values to change, and write the new values back to disk — without touching the terminal.
 
