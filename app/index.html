@@ -193,6 +193,8 @@
   .about-link:hover{text-decoration:underline;}
   .about-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;}
   .about-close:hover{background:var(--bg3);color:var(--text);}
+  #yaml-val:focus{border-color:var(--accent);}
+  #yaml-val::placeholder{color:var(--text3);}
 </style>
 </head>
 <body>
@@ -270,7 +272,9 @@
       <div class="status-line" id="status-line"></div>
       <div id="batch-bar" class="hidden">
         <span id="sel-count">0 selected</span>
-        <input id="new-val" type="text" placeholder="New value..." />
+        <button class="btn" id="yaml-mode-btn" title="Switch to YAML editor for lists/maps" style="font-size:11px;padding:4px 10px;flex-shrink:0;">YAML</button>
+        <input id="new-val" type="text" placeholder="New value (string, number, true/false)..." style="flex:1;min-width:120px;" />
+        <textarea id="yaml-val" placeholder="YAML value (e.g. [80, 443] or&#10;key: value)" style="display:none;flex:1;min-width:180px;min-height:72px;resize:vertical;font-family:var(--mono);font-size:12px;padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.15s;" spellcheck="false"></textarea>
         <button class="btn btn-primary" id="apply-btn">Apply to selected fields</button>
         <button class="btn btn-danger" id="clear-sel-btn">Clear selection</button>
       </div>
@@ -887,14 +891,68 @@
     }
   }
 
+  function getFieldType(chartKey, dotPath) {
+    const entry = state.charts[chartKey];
+    if (!entry || !entry.values) return 'str';
+    const flat = [];
+    flatten(entry.values, '', flat);
+    const found = flat.find(f => f.path === dotPath);
+    return found ? found.type : 'str';
+  }
+
+  function getFieldOriginalVal(chartKey, dotPath) {
+    const entry = state.charts[chartKey];
+    if (!entry || !entry.values) return undefined;
+    const flat = [];
+    flatten(entry.values, '', flat);
+    // reconstruct object value at path for compound types
+    const keys = dotPath.split('.');
+    let cur = entry.values;
+    for (const k of keys) {
+      if (cur == null || typeof cur !== 'object') return undefined;
+      cur = cur[k];
+    }
+    return cur;
+  }
+
+  let yamlMode = false;
+
+  function setYamlMode(on) {
+    yamlMode = on;
+    $('yaml-mode-btn').classList.toggle('btn-primary', on);
+    $('new-val').style.display = on ? 'none' : '';
+    $('yaml-val').style.display = on ? '' : 'none';
+    if (!on) $('yaml-val').value = '';
+  }
+
+  $('yaml-mode-btn').onclick = () => {
+    setYamlMode(!yamlMode);
+    // Auto-populate if exactly one compound field selected
+    if (yamlMode && state.selectedVals.size === 1) {
+      const svKey = [...state.selectedVals][0];
+      const sep = svKey.indexOf('::');
+      if (sep !== -1) {
+        const chartKey = svKey.slice(0, sep);
+        const dotPath = svKey.slice(sep + 2);
+        if (getFieldType(chartKey, dotPath) === 'arr') {
+          const val = getFieldOriginalVal(chartKey, dotPath);
+          if (val !== undefined) {
+            $('yaml-val').value = jsyaml.dump(val, {indent: 2}).trim();
+          }
+        }
+      }
+    }
+  };
+
   $('clear-sel-btn').onclick = () => {
     state.selectedVals.clear();
+    setYamlMode(false);
     updateBatchBar();
     renderValues();
   };
 
   $('apply-btn').onclick = async () => {
-    const newValStr = $('new-val').value;
+    const newValStr = yamlMode ? $('yaml-val').value.trim() : $('new-val').value;
     if (!newValStr && newValStr !== '0') {
       toast('Enter a new value first', true);
       return;
@@ -921,6 +979,31 @@
     if (groups.size === 0) {
       toast('All selected values are read-only', true);
       return;
+    }
+
+    // Option C: block mixed scalar + compound selection
+    const selTypes = new Set();
+    for (const svKey of state.selectedVals) {
+      const sep = svKey.indexOf('::');
+      if (sep === -1) continue;
+      const t = getFieldType(svKey.slice(0, sep), svKey.slice(sep + 2));
+      selTypes.add(t === 'arr' ? 'compound' : 'scalar');
+    }
+    if (selTypes.has('compound') && selTypes.has('scalar')) {
+      toast('Mixed selection: scalars and lists/maps cannot be edited together. Select one type.', true);
+      return;
+    }
+
+    // Option B: YAML mode — parse textarea value
+    let parsedYamlVal;
+    if (yamlMode) {
+      try {
+        parsedYamlVal = jsyaml.load(newValStr);
+        if (parsedYamlVal === undefined) throw new Error('Empty YAML');
+      } catch (e) {
+        toast('Invalid YAML: ' + e.message, true);
+        return;
+      }
     }
 
     let totalUpdated = 0;
@@ -960,7 +1043,7 @@
           }
           const lastKey = keys[keys.length - 1];
           const original = cur != null && typeof cur === 'object' ? cur[lastKey] : undefined;
-          const coerced = coerceValue(newValStr, original);
+          const coerced = yamlMode ? parsedYamlVal : coerceValue(newValStr, original);
           setNestedPath(obj, dotPath, coerced);
           totalUpdated++;
         }
@@ -989,6 +1072,7 @@
     // Clear selection and re-render
     state.selectedVals.clear();
     $('new-val').value = '';
+    setYamlMode(false);
     updateBatchBar();
     renderValues();
   };
