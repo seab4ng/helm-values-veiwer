@@ -200,7 +200,7 @@
           <button class="btn btn-primary" id="add-chart-btn">+ Add chart folder</button>
           <button class="btn btn-primary" id="add-yaml-btn">+ Add YAML file</button>
         </div>
-        <div class="tree-action-hint">Chart folder = full tree with write-back &nbsp;|&nbsp; YAML file = read-only view</div>
+        <div class="tree-action-hint">Chart folder = full tree &nbsp;|&nbsp; YAML file = single file &nbsp;·&nbsp; both support write-back</div>
       </div>
       <div class="tree-search">
         <div class="search-wrap">
@@ -373,7 +373,7 @@
     const selfMatches = nodeMatchesQuery(key, q);
     const childQ = selfMatches ? '' : q;
     const subkeys = entry.subcharts || [];
-    const isWritable = !!entry.rootHandle;
+    const isWritable = !!(entry.rootHandle || entry.fileHandle);
 
     let html = `<div class="tree-node${state.selected === key ? ' active' : ''}" data-name="${esc(key)}">`;
     for (let i = 0; i < depth; i++) html += `<span class="tree-indent" style="width:12px;"></span>`;
@@ -381,7 +381,7 @@
     html += `<span class="tree-dot${isRoot ? ' root' : ' sub'}"></span>`;
     html += `<span class="tree-name">${q && selfMatches ? highlight(entry.name, q) : esc(entry.name)}</span>`;
     if (entry.version) html += `<span class="tree-ver">${esc(entry.version)}</span>`;
-    if (!isWritable && !entry.parentKey) html += `<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--bg4);color:var(--text3);">read-only</span>`;
+    if (!isWritable && !entry.parentKey) html += `<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--bg4);color:var(--text3);">view-only</span>`;
     html += `<span class="tree-count">${countKeys(key)}</span>`;
     html += `<span class="tree-del" data-del="${esc(key)}" title="Remove">&times;</span>`;
     html += `</div>`;
@@ -610,7 +610,8 @@
           name,
           version: '',
           description: '',
-          rootHandle: null,   // read-only: no directory handle
+          rootHandle: null,
+          fileHandle: fh,     // direct handle for write-back
           valuesRelPath: file.name,
           values,
           subcharts: [],
@@ -691,7 +692,7 @@
       if (showKeys.length > 1) {
         html += `<div style="padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1;">`;
         html += esc(entry.name);
-        if (!entry.rootHandle) html += ` <span style="font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text3);">read-only</span>`;
+        if (!entry.rootHandle && !entry.fileHandle) html += ` <span style="font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text3);">view-only</span>`;
         html += ` <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--accent-dim);color:var(--accent);">${filtered.length} ${query ? 'matches' : 'keys'}</span>`;
         html += `</div>`;
       }
@@ -702,7 +703,7 @@
         const pathHtml = query ? highlight(e.path, query) : esc(e.path);
         const valDisplay = e.val === null ? 'null' : e.val;
         const valHtml = query ? highlight(valDisplay, query) : esc(valDisplay);
-        const canCheck = !!entry.rootHandle; // only writable entries get checkboxes that matter
+        const canCheck = !!(entry.rootHandle || entry.fileHandle);
         html += `<label class="val-row${isChecked ? ' checked' : ''}" data-key="${esc(svKey)}">`;
         html += `<input type="checkbox" class="val-cb"${isChecked ? ' checked' : ''}${!canCheck ? ' disabled title="Read-only file"' : ''}>`;
         html += `<span class="val-path">${pathHtml}</span>`;
@@ -782,7 +783,7 @@
       const chartKey = svKey.slice(0, sepIdx);
       const dotPath = svKey.slice(sepIdx + 2);
       const entry = state.charts[chartKey];
-      if (!entry || !entry.rootHandle) continue; // skip read-only
+      if (!entry || (!entry.rootHandle && !entry.fileHandle)) continue; // skip view-only
       if (!groups.has(chartKey)) groups.set(chartKey, []);
       groups.get(chartKey).push(dotPath);
     }
@@ -799,15 +800,19 @@
     for (const [chartKey, dotPaths] of groups) {
       const entry = state.charts[chartKey];
       try {
-        // Navigate to the file from rootHandle
-        const relPath = entry.valuesRelPath;
-        const parts = relPath.split('/');
-        let dirHandle = entry.rootHandle;
-        for (let i = 0; i < parts.length - 1; i++) {
-          dirHandle = await dirHandle.getDirectoryHandle(parts[i]);
+        // Get file handle — direct (standalone YAML) or via rootHandle (chart dir)
+        let fileHandle;
+        if (entry.fileHandle) {
+          fileHandle = entry.fileHandle;
+        } else {
+          const relPath = entry.valuesRelPath;
+          const parts = relPath.split('/');
+          let dirHandle = entry.rootHandle;
+          for (let i = 0; i < parts.length - 1; i++) {
+            dirHandle = await dirHandle.getDirectoryHandle(parts[i]);
+          }
+          fileHandle = await dirHandle.getFileHandle(parts[parts.length - 1]);
         }
-        const fileName = parts[parts.length - 1];
-        const fileHandle = await dirHandle.getFileHandle(fileName);
 
         // Read current content
         const file = await fileHandle.getFile();
