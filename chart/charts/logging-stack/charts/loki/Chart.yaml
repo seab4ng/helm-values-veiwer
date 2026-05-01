@@ -1,8 +1,0 @@
-apiVersion: v2
-name: loki
-version: 2.9.0
-description: Loki log aggregation
-type: application
-dependencies:
-  - name: loki-gateway
-    version: 2.9.0

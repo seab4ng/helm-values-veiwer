@@ -1,5 +1,0 @@
-apiVersion: v2
-name: pilot-discovery
-version: 1.20.0
-description: Pilot discovery component - endpoint discovery service
-type: application

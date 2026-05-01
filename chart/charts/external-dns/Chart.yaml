@@ -1,5 +1,0 @@
-apiVersion: v2
-name: external-dns
-version: 1.14.0
-description: ExternalDNS controller for managing DNS records
-type: application

@@ -1,5 +1,0 @@
-apiVersion: v2
-name: vault-csi-provider
-version: 1.4.1
-description: Vault CSI secrets store provider
-type: application

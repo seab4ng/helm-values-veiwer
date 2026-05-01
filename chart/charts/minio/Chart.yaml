@@ -1,8 +1,0 @@
-apiVersion: v2
-name: minio
-version: 5.2.0
-description: MinIO S3-compatible object storage
-type: application
-dependencies:
-  - name: minio-console
-    version: 5.2.0

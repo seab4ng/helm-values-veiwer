@@ -1,5 +1,0 @@
-apiVersion: v2
-name: redis
-version: 18.6.1
-description: Redis - Open source in-memory data store
-type: application

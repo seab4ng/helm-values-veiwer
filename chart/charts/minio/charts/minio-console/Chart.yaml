@@ -1,5 +1,0 @@
-apiVersion: v2
-name: minio-console
-version: 5.2.0
-description: MinIO web console UI
-type: application

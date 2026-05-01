@@ -1,4 +1,0 @@
-enabled: true
-selfSigned: true
-workloadCertTtl: 24h
-maxWorkloadCertTtl: 7d

@@ -1,5 +1,0 @@
-apiVersion: v2
-name: notifications-controller
-version: 1.2.0
-description: Argo CD notifications controller
-type: application

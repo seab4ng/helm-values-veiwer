@@ -1,6 +1,0 @@
-global:
-  hub: docker.io/istio
-  tag: 1.20.0
-  meshId: mesh1
-pilot:
-  enabled: false

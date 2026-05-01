@@ -1,5 +1,0 @@
-apiVersion: v2
-name: schema-registry
-version: 7.5.0
-description: Confluent Schema Registry
-type: application

@@ -1,9 +1,0 @@
-mode: distributed
-replicas: 4
-image:
-  repository: quay.io/minio/minio
-  tag: RELEASE.2024-03-15T01-07-19Z
-persistence:
-  size: 200Gi
-rootUser: admin
-rootPassword: changeme

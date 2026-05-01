@@ -1,8 +1,0 @@
-apiVersion: v2
-name: kafka-connect
-version: 7.5.0
-description: Kafka Connect framework
-type: application
-dependencies:
-  - name: connector-schemas
-    version: 7.5.0

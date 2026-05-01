@@ -1,5 +1,0 @@
-apiVersion: v2
-name: citadel
-version: 1.20.0
-description: Istio Citadel - certificate authority
-type: application

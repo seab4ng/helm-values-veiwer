@@ -1,5 +1,0 @@
-apiVersion: v2
-name: ingress-nginx
-version: 4.10.0
-description: NGINX ingress controller
-type: application

@@ -1,5 +1,0 @@
-apiVersion: v2
-name: node-exporter
-version: 1.7.0
-description: Prometheus node-exporter daemonset
-type: application
