@@ -1,6 +1,7 @@
 FROM node:22-alpine AS vendor
 WORKDIR /build
-RUN npm install --omit=dev js-yaml@4.1.0
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 FROM nginx:1.27-alpine
 
