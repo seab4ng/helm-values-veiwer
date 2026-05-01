@@ -900,6 +900,17 @@
     return found ? found.type : 'str';
   }
 
+  // Returns user-facing category: 'string' | 'list' | 'map'
+  function getFieldCategory(chartKey, dotPath) {
+    const entry = state.charts[chartKey];
+    if (!entry || !entry.values) return 'string';
+    const flat = [];
+    flatten(entry.values, '', flat);
+    const found = flat.find(f => f.path === dotPath);
+    if (!found || found.type !== 'arr') return 'string';
+    return found.val === '[]' ? 'list' : 'map';
+  }
+
   function getFieldOriginalVal(chartKey, dotPath) {
     const entry = state.charts[chartKey];
     if (!entry || !entry.values) return undefined;
@@ -925,24 +936,7 @@
     if (!on) $('yaml-val').value = '';
   }
 
-  $('yaml-mode-btn').onclick = () => {
-    setYamlMode(!yamlMode);
-    // Auto-populate if exactly one compound field selected
-    if (yamlMode && state.selectedVals.size === 1) {
-      const svKey = [...state.selectedVals][0];
-      const sep = svKey.indexOf('::');
-      if (sep !== -1) {
-        const chartKey = svKey.slice(0, sep);
-        const dotPath = svKey.slice(sep + 2);
-        if (getFieldType(chartKey, dotPath) === 'arr') {
-          const val = getFieldOriginalVal(chartKey, dotPath);
-          if (val !== undefined) {
-            $('yaml-val').value = jsyaml.dump(val, {indent: 2}).trim();
-          }
-        }
-      }
-    }
-  };
+  $('yaml-mode-btn').onclick = () => setYamlMode(!yamlMode);
 
   $('clear-sel-btn').onclick = () => {
     state.selectedVals.clear();
@@ -981,16 +975,16 @@
       return;
     }
 
-    // Option C: block mixed scalar + compound selection
-    const selTypes = new Set();
+    // Option C: block mixed-type selection
+    const selCategories = new Set();
     for (const svKey of state.selectedVals) {
       const sep = svKey.indexOf('::');
       if (sep === -1) continue;
-      const t = getFieldType(svKey.slice(0, sep), svKey.slice(sep + 2));
-      selTypes.add(t === 'arr' ? 'compound' : 'scalar');
+      selCategories.add(getFieldCategory(svKey.slice(0, sep), svKey.slice(sep + 2)));
     }
-    if (selTypes.has('compound') && selTypes.has('scalar')) {
-      toast('Mixed selection: scalars and lists/maps cannot be edited together. Select one type.', true);
+    if (selCategories.size > 1) {
+      const types = [...selCategories].join(', ');
+      toast(`Mixed selection: cannot edit ${types} together. Select one type at a time.`, true);
       return;
     }
 
