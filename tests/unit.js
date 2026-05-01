@@ -1,7 +1,7 @@
 'use strict';
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {flatten, esc, highlight, displayName, dirOf, buildChartTree} = require('../app/lib.js');
+const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue} = require('../app/lib.js');
 
 // ─────────────────────────────────────────────
 // flatten
@@ -232,4 +232,91 @@ test('buildChartTree: rootFallback used when Chart.yaml has no name field', () =
   const tree = buildChartTree(fileMap, mockParse, 'myfallback');
   assert.equal(tree.root, 'myfallback');
   assert.ok(tree.entries['myfallback']);
+});
+
+// ─────────────────────────────────────────────
+// setNestedPath
+// ─────────────────────────────────────────────
+
+test('setNestedPath: sets a top-level key', () => {
+  const obj = {port: 80};
+  setNestedPath(obj, 'port', 9090);
+  assert.equal(obj.port, 9090);
+});
+
+test('setNestedPath: sets a nested key', () => {
+  const obj = {service: {port: 80}};
+  setNestedPath(obj, 'service.port', 8080);
+  assert.equal(obj.service.port, 8080);
+});
+
+test('setNestedPath: creates intermediate objects when missing', () => {
+  const obj = {};
+  setNestedPath(obj, 'a.b.c', 'hello');
+  assert.equal(obj.a.b.c, 'hello');
+});
+
+test('setNestedPath: sets deeply nested key without disturbing siblings', () => {
+  const obj = {image: {tag: 'latest', repository: 'nginx'}};
+  setNestedPath(obj, 'image.tag', 'v1.2.3');
+  assert.equal(obj.image.tag, 'v1.2.3');
+  assert.equal(obj.image.repository, 'nginx');
+});
+
+test('setNestedPath: does nothing when path traverses a non-object', () => {
+  const obj = {a: 'string'};
+  setNestedPath(obj, 'a.b', 'value');
+  // 'a' is a string, so traversal stops — original value unchanged
+  assert.equal(obj.a, 'string');
+});
+
+test('setNestedPath: overwrites existing nested object with scalar', () => {
+  const obj = {service: {port: 80, type: 'ClusterIP'}};
+  setNestedPath(obj, 'service.type', 'NodePort');
+  assert.equal(obj.service.type, 'NodePort');
+  assert.equal(obj.service.port, 80);
+});
+
+// ─────────────────────────────────────────────
+// coerceValue
+// ─────────────────────────────────────────────
+
+test('coerceValue: coerces to number when original is number', () => {
+  assert.equal(coerceValue('42', 100), 42);
+});
+
+test('coerceValue: returns string when original is number but input is not numeric', () => {
+  assert.equal(coerceValue('abc', 100), 'abc');
+});
+
+test('coerceValue: coerces "true" to boolean true when original is boolean', () => {
+  assert.equal(coerceValue('true', false), true);
+});
+
+test('coerceValue: coerces "false" to boolean false when original is boolean', () => {
+  assert.equal(coerceValue('false', true), false);
+});
+
+test('coerceValue: returns string when original is boolean but input is not true/false', () => {
+  assert.equal(coerceValue('yes', true), 'yes');
+});
+
+test('coerceValue: coerces "null" string to null when original is null', () => {
+  assert.equal(coerceValue('null', null), null);
+});
+
+test('coerceValue: returns plain string when original is string', () => {
+  assert.equal(coerceValue('hello', 'world'), 'hello');
+});
+
+test('coerceValue: returns plain string when original is undefined', () => {
+  assert.equal(coerceValue('hello', undefined), 'hello');
+});
+
+test('coerceValue: coerces integer string to number, preserves zero', () => {
+  assert.equal(coerceValue('0', 5), 0);
+});
+
+test('coerceValue: coerces float string to number', () => {
+  assert.equal(coerceValue('3.14', 1.0), 3.14);
 });

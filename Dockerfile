@@ -1,57 +1,12 @@
-FROM python:3.12-alpine AS builder
-
-# Python for chart extraction + Node/npm to vendor browser libs (js-yaml, fflate)
-# so the UI works in airgapped environments without hitting a CDN.
-RUN apk add --no-cache nodejs npm \
- && pip install --no-cache-dir pyyaml
-
-COPY scripts/extract-chart-data.py /usr/local/bin/extract-chart-data.py
-RUN chmod +x /usr/local/bin/extract-chart-data.py
-
-# Vendor npm deps once at build time
-COPY package.json /tmp/npm/package.json
-RUN cd /tmp/npm && npm install --omit=dev --no-audit --no-fund
-
-# ══════════════════════════════════════════════════════════════
-# COPY YOUR HELM UMBRELLA CHART HERE
-#
-# This is the full chart directory including Chart.yaml,
-# values.yaml, and the charts/ subdirectory with dependencies.
-#
-# Example:
-#   COPY my-umbrella-chart/ /tmp/chart/
-#
-# The script will:
-#   1. Parse Chart.yaml to find the dependency tree
-#   2. Recurse into charts/ to find subcharts
-#   3. Extract .tgz archives in charts/ if present
-#   4. Copy each values.yaml and build a manifest.json
-#
-# If your subcharts are .tgz files (from helm dependency build),
-# that's fine — they'll be extracted automatically.
-# ══════════════════════════════════════════════════════════════
-COPY chart/ /tmp/chart/
-
-RUN python3 /usr/local/bin/extract-chart-data.py /tmp/chart /tmp/values-output
-
-# ── Final image: just nginx serving static files ──
 FROM nginx:1.27-alpine
 
 RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf
 
-COPY nginx.conf              /etc/nginx/conf.d/default.conf
-COPY app/index.html          /usr/share/nginx/html/index.html
-COPY app/lib.js          /usr/share/nginx/html/lib.js
-COPY docker-entrypoint.sh    /docker-entrypoint.sh
+COPY nginx.conf           /etc/nginx/conf.d/default.conf
+COPY app/index.html       /usr/share/nginx/html/index.html
+COPY app/lib.js           /usr/share/nginx/html/lib.js
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
-
-# Copy extracted values + manifest from builder
-COPY --from=builder /tmp/values-output/ /usr/share/nginx/html/values/
-
-# Copy vendored browser libraries (js-yaml + fflate) for airgap use.
-# index.html references them as vendor/js-yaml/... and vendor/fflate/...
-COPY --from=builder /tmp/npm/node_modules/js-yaml/ /usr/share/nginx/html/vendor/js-yaml/
-COPY --from=builder /tmp/npm/node_modules/fflate/  /usr/share/nginx/html/vendor/fflate/
 
 EXPOSE 8080
 

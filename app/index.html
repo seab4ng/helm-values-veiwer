@@ -41,6 +41,8 @@
   .tree-node.active{background:var(--accent-dim);color:var(--accent);}
   .tree-node.active .tree-dot{background:var(--accent);}
   .tree-node.active .tree-count{background:var(--accent);color:var(--bg);}
+  .tree-node.disabled{opacity:0.4;cursor:default;}
+  .tree-node.disabled:hover{background:transparent;}
 
   .tree-indent{flex-shrink:0;}
   .tree-line{color:var(--text3);font-size:12px;flex-shrink:0;width:16px;text-align:center;}
@@ -50,7 +52,6 @@
   .tree-name{flex:1;font-weight:500;word-break:break-word;}
   .tree-ver{font-size:11px;color:var(--text3);font-family:var(--mono);}
   .tree-count{font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text2);flex-shrink:0;}
-  .builtin-tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--purple-dim);color:var(--purple);text-transform:uppercase;letter-spacing:0.4px;font-weight:500;}
 
   .tree-del{
     flex-shrink:0;width:20px;height:20px;border-radius:4px;
@@ -67,7 +68,7 @@
   .tree-action-hint{font-size:10px;color:var(--text3);text-align:center;}
 
   /* Right panel */
-  .values-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .values-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;display:flex;flex-direction:column;}
   .values-hdr{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
   .values-hdr-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
   .values-chart-name{font-size:15px;font-weight:600;}
@@ -89,24 +90,41 @@
   .status-line{font-size:12px;color:var(--text2);padding:8px 16px;border-bottom:1px solid var(--border);min-height:32px;display:flex;align-items:center;gap:6px;}
   .status-line .ct{color:var(--accent);font-weight:500;}
 
-  /* Values panel: default visible area ~half page; when the list is longer
-     than that, grow up to ~2x (then scroll internally). Mirrors the tree
-     panel's "get longer as you add more" feel without eating the whole page. */
-  .scrollbox{min-height:50vh;max-height:140vh;overflow-y:auto;}
+  .scrollbox{min-height:50vh;max-height:140vh;overflow-y:auto;flex:1;}
   .scrollbox::-webkit-scrollbar{width:6px;}
   .scrollbox::-webkit-scrollbar-track{background:transparent;}
   .scrollbox::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
-  .row{display:flex;align-items:baseline;gap:8px;padding:3px 16px;font-family:var(--mono);font-size:13px;line-height:1.7;transition:background 0.1s;}
-  .row:hover{background:var(--bg3);}
-  .path{color:var(--text2);word-break:break-all;}
-  .sep{color:var(--text3);flex-shrink:0;margin:0 2px;}
-  .val{word-break:break-all;}
-  .val.str{color:var(--amber);}
-  .val.num{color:var(--green);}
-  .val.bool{color:var(--purple);}
-  .val.null{color:var(--text3);font-style:italic;}
-  .val.arr{color:var(--cyan);}
+  /* Value rows with checkboxes */
+  .val-row{
+    display:flex;align-items:baseline;gap:8px;padding:3px 16px;
+    font-family:var(--mono);font-size:13px;line-height:1.7;
+    transition:background 0.1s;cursor:pointer;
+    user-select:none;
+  }
+  .val-row:hover{background:var(--bg3);}
+  .val-row.checked{background:var(--accent-dim);}
+  .val-cb{
+    flex-shrink:0;appearance:none;-webkit-appearance:none;
+    width:14px;height:14px;border:1px solid var(--border);
+    border-radius:3px;background:var(--bg3);cursor:pointer;
+    position:relative;top:2px;transition:all 0.1s;
+    align-self:center;
+  }
+  .val-cb:checked{background:var(--accent);border-color:var(--accent);}
+  .val-cb:checked::after{
+    content:'';position:absolute;left:3px;top:0px;
+    width:5px;height:8px;border:2px solid var(--bg);
+    border-top:none;border-left:none;transform:rotate(45deg);
+  }
+  .val-path{color:var(--text2);word-break:break-all;}
+  .val-sep{color:var(--text3);flex-shrink:0;margin:0 2px;}
+  .val-val{word-break:break-all;}
+  .val-val.str{color:var(--amber);}
+  .val-val.num{color:var(--green);}
+  .val-val.bool{color:var(--purple);}
+  .val-val.null{color:var(--text3);font-style:italic;}
+  .val-val.arr{color:var(--cyan);}
   .hl{background:#6e400e;border-radius:3px;padding:0 2px;color:var(--amber);}
   .empty{color:var(--text2);font-size:14px;text-align:center;padding:3rem 1rem;}
   .empty span{display:block;font-size:28px;margin-bottom:6px;opacity:0.4;}
@@ -120,28 +138,27 @@
   .btn:hover{border-color:var(--accent);color:var(--accent);}
   .btn-primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
   .btn-primary:hover{background:var(--accent);color:var(--bg);}
+  .btn-danger{background:#3d1416;border-color:#5a2020;color:var(--red);}
+  .btn-danger:hover{background:var(--red);color:var(--bg);}
 
-  .add-panel{display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:12px;animation:slideDown 0.15s ease-out;}
-  @keyframes slideDown{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
-  .add-panel.open{display:block;}
-  .add-panel label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:4px;}
-  .add-panel input[type="text"],.add-panel textarea{
-    font-family:var(--font);font-size:13px;padding:7px 10px;
+  /* Batch edit bar */
+  #batch-bar{
+    position:sticky;bottom:0;z-index:10;
+    padding:10px 16px;
+    background:var(--bg3);border-top:1px solid var(--border);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  #batch-bar.hidden{display:none;}
+  #sel-count{font-size:12px;color:var(--text2);flex-shrink:0;white-space:nowrap;}
+  #new-val{
+    flex:1;min-width:140px;
+    font-family:var(--font);font-size:13px;padding:5px 10px;
     border-radius:var(--radius);border:1px solid var(--border);
-    background:var(--bg3);color:var(--text);width:100%;outline:none;margin-bottom:8px;
+    background:var(--bg);color:var(--text);outline:none;
+    transition:border-color 0.15s;
   }
-  .add-panel textarea{font-family:var(--mono);min-height:120px;resize:vertical;}
-  .upload-label{
-    display:inline-flex;align-items:center;gap:5px;
-    font-size:12px;color:var(--text2);cursor:pointer;
-    padding:6px 12px;border:1px dashed var(--border);border-radius:var(--radius);
-    margin-bottom:8px;transition:all 0.15s;
-  }
-  .upload-label:hover{border-color:var(--accent);color:var(--accent);}
-  .upload-label input{display:none;}
-
-  .panel-title{font-size:14px;font-weight:600;margin-bottom:4px;}
-  .panel-desc{font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;}
+  #new-val:focus{border-color:var(--accent);}
+  #new-val::placeholder{color:var(--text3);}
 
   .toast-area{position:fixed;top:16px;right:16px;z-index:100;}
   .toast{
@@ -151,7 +168,13 @@
   }
   .toast.err{background:#3d1416;color:var(--red);border-color:#5a2020;animation:toastIn 0.2s ease-out;}
   @keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
-  @keyframes fadeOut{0%,60%{opacity:1;}100%{opacity:0;display:none;}}
+  @keyframes fadeOut{0%,60%{opacity:1;}100%{opacity:0;}}
+
+  .warn-bar{
+    padding:8px 16px;background:#2d1f00;border-bottom:1px solid #5a3f00;
+    font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px;
+  }
+  .warn-bar.hidden{display:none;}
 </style>
 </head>
 <body>
@@ -160,46 +183,13 @@
     <div class="hdr-icon">&#9096;</div>
     <div>
       <h1>Helm Values Viewer</h1>
-      <p>Chart dependency tree + searchable values</p>
+      <p>Chart dependency tree + searchable values editor</p>
       <p style="font-size:11px;color:var(--text3);margin-top:2px;letter-spacing:0.2px;">__APP_NAME__ &nbsp;·&nbsp; __APP_VERSION__</p>
     </div>
   </div>
 
-  <!-- Panels (above the main grid, full width) -->
-  <div class="add-panel" id="add-panel">
-    <div class="panel-title">Add a values file</div>
-    <div class="panel-desc">Upload or paste a single values.yaml. Shows as a standalone entry, no subchart tree.</div>
-    <label>Chart name</label>
-    <input type="text" id="name-in" placeholder="e.g. my-app" />
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-      <label class="upload-label">&#128194; Upload .yaml<input type="file" id="file-in" accept=".yaml,.yml,.txt" multiple /></label>
-      <span style="font-size:11px;color:var(--text3);">or paste below</span>
-    </div>
-    <textarea id="yaml-in" placeholder="Paste values.yaml content..."></textarea>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" id="save-btn">Save</button>
-      <button class="btn" id="cancel-btn">Cancel</button>
-    </div>
-  </div>
-
-  <div class="add-panel" id="add-chart-panel">
-    <div class="panel-title">Add a chart</div>
-    <div class="panel-desc">Upload a chart folder <em>or</em> a <code>.tgz</code> archive. Discovers all subcharts and builds the dependency tree.</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-      <label class="upload-label">
-        &#128194; Select chart folder
-        <input type="file" id="chart-folder-in" webkitdirectory directory multiple />
-      </label>
-      <label class="upload-label">
-        &#128230; Upload .tgz
-        <input type="file" id="chart-tgz-in" accept=".tgz,.tar.gz" />
-      </label>
-    </div>
-    <div id="chart-upload-status" style="font-size:12px;color:var(--text2);min-height:20px;margin-bottom:8px;"></div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" id="save-chart-btn" disabled>Save chart</button>
-      <button class="btn" id="cancel-chart-btn">Cancel</button>
-    </div>
+  <div id="fsapi-warn" class="warn-bar hidden">
+    &#9888; Your browser does not support the File System Access API. Use Chrome or Edge to enable folder picking and file write-back.
   </div>
 
   <div class="main">
@@ -208,10 +198,10 @@
       <div class="tree-panel-hdr">Chart dependency tree</div>
       <div class="tree-actions">
         <div class="tree-action-row">
-          <button class="btn btn-primary" id="add-btn">+ Add values file</button>
-          <button class="btn btn-primary" id="add-chart-btn">+ Add chart</button>
+          <button class="btn btn-primary" id="add-chart-btn">+ Add chart folder</button>
+          <button class="btn btn-primary" id="add-yaml-btn">+ Add YAML file</button>
         </div>
-        <div class="tree-action-hint">Values file = single yaml &nbsp;|&nbsp; Chart = folder with subchart tree</div>
+        <div class="tree-action-hint">Chart folder = full tree with write-back &nbsp;|&nbsp; YAML file = read-only view</div>
       </div>
       <div class="tree-search">
         <div class="search-wrap">
@@ -238,586 +228,654 @@
       </div>
       <div class="status-line" id="status-line"></div>
       <div class="scrollbox" id="scrollbox"></div>
+      <div id="batch-bar" class="hidden">
+        <span id="sel-count">0 selected</span>
+        <input id="new-val" type="text" placeholder="New value..." />
+        <button class="btn btn-primary" id="apply-btn">Apply to selected files</button>
+        <button class="btn btn-danger" id="clear-sel-btn">Clear selection</button>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="toast-area" id="toast-area"></div>
 
-<script src="vendor/js-yaml/dist/js-yaml.min.js"></script>
-<script src="vendor/fflate/umd/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
 <script src="lib.js"></script>
 <script>
 (function(){
-  const {flatten,esc,highlight,displayName,dirOf,buildChartTree}=HelmLib;
+  const {flatten, esc, highlight, displayName, setNestedPath, coerceValue} = HelmLib;
 
-  // State
-  // manifest tracks the dependency tree. Multiple roots supported (userRoots).
-  let manifest = { root: null, charts: {} };
-  const builtinData = {};
-  const userData = {};
-  const userManifestCharts = {};  // chart entries added via "Add chart"
-  const userRoots = [];           // root names from user-uploaded charts
-  let selected = null;
-  let treeQuery = '';
+  // ── State ──
+  const state = {
+    charts: {},        // key -> chart entry
+    chartOrder: [],    // keys in add order
+    selected: null,    // currently viewed chart key (or 'all')
+    query: '',         // value search string
+    selectedVals: new Set(), // "chartKey::dotPath" strings
+  };
 
-  const $=id=>document.getElementById(id);
+  const $ = id => document.getElementById(id);
 
-  function toast(msg,err){
-    const el=document.createElement('div');
-    el.className='toast'+(err?' err':'');
-    el.textContent=msg;
+  // ── File System Access API support check ──
+  const hasFSAPI = typeof window.showDirectoryPicker === 'function' && typeof window.showOpenFilePicker === 'function';
+  if (!hasFSAPI) {
+    $('fsapi-warn').classList.remove('hidden');
+  }
+
+  // ── Toast ──
+  function toast(msg, err) {
+    const el = document.createElement('div');
+    el.className = 'toast' + (err ? ' err' : '');
+    el.textContent = msg;
     $('toast-area').appendChild(el);
-    setTimeout(()=>el.remove(),err?6000:4000);
+    setTimeout(() => el.remove(), err ? 6000 : 4200);
   }
 
-  // ── localStorage persistence ──
-  const LS_KEY='helm-viewer-user-state';
-
-  function saveState(){
-    try{
-      localStorage.setItem(LS_KEY,JSON.stringify({userData,userManifestCharts,userRoots}));
-    }catch(e){}
-  }
-
-  function loadState(){
-    try{
-      const raw=localStorage.getItem(LS_KEY);
-      if(!raw)return;
-      const s=JSON.parse(raw);
-      if(s.userData) Object.assign(userData,s.userData);
-      if(s.userManifestCharts) Object.assign(userManifestCharts,s.userManifestCharts);
-      if(s.userRoots&&Array.isArray(s.userRoots)) userRoots.push(...s.userRoots);
-    }catch(e){}
-  }
-
-  // ── Load built-in data ──
-  async function loadBuiltins(){
-    loadState();
-    try{
-      const resp=await fetch('/values/manifest.json');
-      if(!resp.ok) return;
-      const m=await resp.json();
-      manifest=m;
-      for(const[name,chart] of Object.entries(m.charts)){
-        if(!chart.values_file) continue;
-        try{
-          const r=await fetch('/values/'+chart.values_file);
-          if(!r.ok) continue;
-          builtinData[name]=jsyaml.load(await r.text())||{};
-        }catch(e){}
-      }
-    }catch(e){}
-    if(manifest.root) selected=manifest.root;
-    else if(Object.keys(builtinData).length) selected=Object.keys(builtinData).sort()[0];
-    else if(userRoots.length) selected=userRoots[0];
-    else if(Object.keys(userData).length) selected=Object.keys(userData).sort()[0];
-    renderTree();renderValues();
-  }
-
-  // Merge manifest + userManifest
-  function getFullManifest(){
-    const charts={...manifest.charts,...userManifestCharts};
-    return charts;
-  }
-
-  function getData(name){ return userData[name]||builtinData[name]||null; }
-  function isBuiltin(name){ return !!builtinData[name]&&!userData[name]; }
-  function isUserAdded(name){ return !!userData[name]&&!builtinData[name]; }
-
-  function allChartNames(){
-    const s=new Set([...Object.keys(builtinData),...Object.keys(userData)]);
-    return [...s].sort();
-  }
-  function countKeys(name){
-    const data=getData(name);
-    if(!data)return 0;
-    const flat=[];flatten(data,'',flat);return flat.length;
+  // ── Count flat keys ──
+  function countKeys(key) {
+    const entry = state.charts[key];
+    if (!entry || !entry.values) return 0;
+    const flat = [];
+    flatten(entry.values, '', flat);
+    return flat.length;
   }
 
   // ── Tree search helpers ──
-  function treeNorm(s){ return String(s).toLowerCase().replace(/[-_\s]/g,''); }
-  function nodeMatchesQuery(name,q){
-    if(!q) return true;
-    const charts=getFullManifest();
-    const chart=charts[name];
-    const dname=chart?chart.name||displayName(name):displayName(name);
-    const ver=chart&&chart.version?chart.version:'';
-    const nq=treeNorm(q);
-    return treeNorm(dname).includes(nq)||treeNorm(ver).includes(nq);
-  }
-  function subtreeMatchesQuery(name,q){
-    if(!q) return true;
-    if(nodeMatchesQuery(name,q)) return true;
-    const charts=getFullManifest();
-    const chart=charts[name];
-    return !!(chart&&(chart.dependencies||[]).some(d=>subtreeMatchesQuery(d,q)));
+  function treeNorm(s) { return String(s).toLowerCase().replace(/[-_\s]/g, ''); }
+
+  function nodeMatchesQuery(key, q) {
+    if (!q) return true;
+    const entry = state.charts[key];
+    const name = entry ? entry.name : displayName(key);
+    const ver = entry ? (entry.version || '') : '';
+    const nq = treeNorm(q);
+    return treeNorm(name).includes(nq) || treeNorm(ver).includes(nq);
   }
 
-  // Get all descendants of a chart in the manifest tree
-  function getDescendants(name){
-    const charts=getFullManifest();
-    const result=[];
-    function walk(n){
-      const c=charts[n];
-      if(!c)return;
-      const deps=c.dependencies||[];
-      for(const d of deps){
-        result.push(d);
-        walk(d);
-      }
-    }
-    walk(name);
-    return result;
-  }
-
-  // Delete a chart and optionally its descendants
-  function deleteChart(name){
-    const charts=getFullManifest();
-    const entry=charts[name];
-    const toDelete=[name];
-
-    // If it has children (is a parent), delete descendants too
-    if(entry&&entry.dependencies&&entry.dependencies.length){
-      toDelete.push(...getDescendants(name));
-    }
-
-    for(const n of toDelete){
-      delete userData[n];
-      delete userManifestCharts[n];
-    }
-
-    // Remove from userRoots
-    const ri=userRoots.indexOf(name);
-    if(ri>-1) userRoots.splice(ri,1);
-
-    // Also remove from parent's dependency list if it's a subchart
-    if(entry&&entry.parent){
-      const parent=charts[entry.parent];
-      if(parent&&parent.dependencies){
-        const idx=parent.dependencies.indexOf(name);
-        if(idx>-1){
-          // Modify the right source
-          if(userManifestCharts[entry.parent]) userManifestCharts[entry.parent].dependencies.splice(idx,1);
-          else if(manifest.charts[entry.parent]) manifest.charts[entry.parent].dependencies.splice(idx,1);
-        }
-      }
-    }
-
-    // If deleted was selected, go to __all__
-    if(toDelete.includes(selected)) selected='__all__';
-
-    const count=toDelete.length;
-    toast(`Deleted ${count===1?name:name+' + '+( count-1)+' subchart'+(count>2?'s':'')}`);
-    saveState();
-    renderTree();renderValues();
+  function subtreeMatchesQuery(key, q) {
+    if (!q) return true;
+    if (nodeMatchesQuery(key, q)) return true;
+    const entry = state.charts[key];
+    return !!(entry && (entry.subcharts || []).some(sk => subtreeMatchesQuery(sk, q)));
   }
 
   // ── Render tree ──
-  function renderTree(){
-    const el=$('tree');
-    const names=allChartNames();
-    const q=treeQuery;
+  function renderTree() {
+    const el = $('tree');
+    const q = $('tree-search').value.trim();
+    $('tree-clear-x').style.display = q ? 'block' : 'none';
 
-    $('tree-clear-x').style.display=q?'block':'none';
+    const rootKeys = state.chartOrder.filter(k => {
+      const e = state.charts[k];
+      return e && !e.parentKey;
+    });
 
-    if(!names.length){
-      el.innerHTML='<div style="padding:16px;font-size:13px;color:var(--text3);text-align:center;">No charts loaded</div>';
+    const hasCharts = state.chartOrder.length > 0;
+    let html = '';
+
+    // "All charts" node - always present, grayed when nothing loaded
+    html += `<div class="tree-node${state.selected === 'all' ? ' active' : ''}${!hasCharts ? ' disabled' : ''}" data-name="all">
+      <span class="tree-dot" style="background:var(--cyan);"></span>
+      <span class="tree-name">All charts</span>
+      <span class="tree-count">${state.chartOrder.filter(k => !state.charts[k].parentKey).length}</span>
+    </div>`;
+
+    if (!hasCharts) {
+      html += `<div class="empty" style="padding:2rem 1rem;">
+        <span>&#9096;</span>
+        Add a chart folder or YAML file to get started
+      </div>`;
+      el.innerHTML = html;
+      attachTreeEvents(el);
       return;
     }
 
-    let html='';
+    const rendered = new Set();
 
-    // "All charts" — always visible
-    html+=`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
-      <span class="tree-dot" style="background:var(--cyan);"></span>
-      <span class="tree-name">All charts</span>
-      <span class="tree-count">${names.length}</span>
-    </div>`;
-
-    const allRendered=new Set();
-
-    // Render built-in tree
-    if(manifest.root&&manifest.charts[manifest.root]){
-      if(!q||subtreeMatchesQuery(manifest.root,q)){
-        const tr=new Set();
-        html+=renderTreeNode(manifest.root,0,false,tr,q);
-        tr.forEach(n=>allRendered.add(n));
-      }
+    for (const rootKey of rootKeys) {
+      if (!subtreeMatchesQuery(rootKey, q)) continue;
+      html += renderTreeNode(rootKey, 0, rendered, q);
     }
 
-    // Render user-uploaded chart trees (each gets its own rendered set)
-    for(const rootName of userRoots){
-      if(!allRendered.has(rootName)&&userManifestCharts[rootName]){
-        if(!q||subtreeMatchesQuery(rootName,q)){
-          const tr=new Set();
-          html+=renderTreeNode(rootName,0,true,tr,q);
-          tr.forEach(n=>allRendered.add(n));
-        }
-      }
+    if (q && rootKeys.every(k => !subtreeMatchesQuery(k, q))) {
+      html += '<div style="padding:12px 16px;font-size:12px;color:var(--text3);">No charts match</div>';
     }
 
-    // Render flat user-added values (not part of any tree)
-    for(const name of Object.keys(userData).sort()){
-      if(allRendered.has(name))continue;
-      if(userManifestCharts[name])continue;
-      if(q&&!nodeMatchesQuery(name,q))continue;
-      html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
-        <span class="tree-dot"></span>
-        <span class="tree-name">${q?highlight(displayName(name),q):esc(displayName(name))}</span>
-        <span class="tree-count">${countKeys(name)}</span>
-        <span class="tree-del" data-del="${esc(name)}" title="Delete">&times;</span>
-      </div>`;
-      allRendered.add(name);
-    }
-
-    // Render built-in flat (no tree)
-    for(const name of Object.keys(builtinData).sort()){
-      if(allRendered.has(name))continue;
-      // Skip subcharts — they belong inside their parent's tree, not at root.
-      // If the tree traversal didn't reach them it's because the parent's
-      // declared dep name doesn't match this chart's Chart.yaml name.
-      if(manifest.charts[name]&&manifest.charts[name].parent)continue;
-      if(q&&!nodeMatchesQuery(name,q))continue;
-      html+=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">
-        <span class="tree-dot sub"></span>
-        <span class="tree-name">${q?highlight(name,q):esc(name)}</span>
-        <span class="builtin-tag">built-in</span>
-        <span class="tree-count">${countKeys(name)}</span>
-      </div>`;
-      allRendered.add(name);
-    }
-
-    if(q&&html===`<div class="tree-node${selected==='__all__'?' active':''}" data-name="__all__">
-      <span class="tree-dot" style="background:var(--cyan);"></span>
-      <span class="tree-name">All charts</span>
-      <span class="tree-count">${names.length}</span>
-    </div>`){
-      html+='<div style="padding:12px 16px;font-size:12px;color:var(--text3);">No charts match</div>';
-    }
-
-    el.innerHTML=html;
-
-    // Click: select
-    el.querySelectorAll('.tree-node').forEach(node=>{
-      node.addEventListener('click',(e)=>{
-        if(e.target.classList.contains('tree-del'))return;
-        selected=node.dataset.name;
-        renderTree();renderValues();
-      });
-    });
-
-    // Click: delete
-    el.querySelectorAll('.tree-del').forEach(btn=>{
-      btn.addEventListener('click',(e)=>{
-        e.stopPropagation();
-        deleteChart(btn.dataset.del);
-      });
-    });
+    el.innerHTML = html;
+    attachTreeEvents(el);
+    queueSync();
   }
 
-  function renderTreeNode(name,depth,isUser,rendered,q){
-    const charts=getFullManifest();
-    const chart=charts[name];
-    if(!chart)return '';
-    rendered.add(name);
-    const hasData=!!getData(name);
-    const deps=chart.dependencies||[];
-    const isRoot=depth===0;
-    const canDelete=isUser||isUserAdded(name);
-    const rawName=chart.name||displayName(name);
-    // If this node itself matches, show full subtree (pass no filter to children)
-    const selfMatches=nodeMatchesQuery(name,q);
-    const childQ=selfMatches?'':q;
+  function renderTreeNode(key, depth, rendered, q) {
+    const entry = state.charts[key];
+    if (!entry || rendered.has(key)) return '';
+    rendered.add(key);
 
-    let html=`<div class="tree-node${selected===name?' active':''}" data-name="${esc(name)}">`;
-    for(let i=0;i<depth;i++) html+=`<span class="tree-indent" style="width:12px;"></span>`;
-    if(depth>0) html+=`<span class="tree-line">&#9492;</span>`;
-    html+=`<span class="tree-dot${isRoot?' root':' sub'}"></span>`;
-    html+=`<span class="tree-name">${q&&selfMatches?highlight(rawName,q):esc(rawName)}</span>`;
-    if(chart.version) html+=`<span class="tree-ver">${esc(chart.version)}</span>`;
-    if(!isUser&&isBuiltin(name)) html+=`<span class="builtin-tag">built-in</span>`;
-    if(hasData) html+=`<span class="tree-count">${countKeys(name)}</span>`;
-    if(canDelete) html+=`<span class="tree-del" data-del="${esc(name)}" title="Delete${deps.length?' (includes subcharts)':''}">&#215;</span>`;
-    html+=`</div>`;
+    const isRoot = depth === 0;
+    const selfMatches = nodeMatchesQuery(key, q);
+    const childQ = selfMatches ? '' : q;
+    const subkeys = entry.subcharts || [];
+    const isWritable = !!entry.rootHandle;
 
-    for(const dep of deps){
-      if(charts[dep]&&!rendered.has(dep)){
-        if(!childQ||subtreeMatchesQuery(dep,childQ)){
-          html+=renderTreeNode(dep,depth+1,isUser,rendered,childQ);
-        }
+    let html = `<div class="tree-node${state.selected === key ? ' active' : ''}" data-name="${esc(key)}">`;
+    for (let i = 0; i < depth; i++) html += `<span class="tree-indent" style="width:12px;"></span>`;
+    if (depth > 0) html += `<span class="tree-line">&#9492;</span>`;
+    html += `<span class="tree-dot${isRoot ? ' root' : ' sub'}"></span>`;
+    html += `<span class="tree-name">${q && selfMatches ? highlight(entry.name, q) : esc(entry.name)}</span>`;
+    if (entry.version) html += `<span class="tree-ver">${esc(entry.version)}</span>`;
+    if (!isWritable && !entry.parentKey) html += `<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--bg4);color:var(--text3);">read-only</span>`;
+    html += `<span class="tree-count">${countKeys(key)}</span>`;
+    html += `<span class="tree-del" data-del="${esc(key)}" title="Remove">&times;</span>`;
+    html += `</div>`;
+
+    for (const sk of subkeys) {
+      if (!childQ || subtreeMatchesQuery(sk, childQ)) {
+        html += renderTreeNode(sk, depth + 1, rendered, childQ);
       }
     }
     return html;
   }
 
-  // ── Render values ──
-  function renderValues(){
-    const box=$('scrollbox'),query=$('search').value.trim();
-    $('clear-x').style.display=query?'block':'none';
-    const statusLine=$('status-line');
-    const names=allChartNames();
-
-    if(!names.length){
-      $('val-name').textContent='No charts loaded';
-      $('val-desc').textContent='Use the buttons below the tree to add values.';
-      statusLine.innerHTML='';
-      box.innerHTML='<div class="empty"><span>&#9096;</span>No values to display</div>';
-      return;
-    }
-
-    let showCharts;
-    if(selected==='__all__'){
-      showCharts=names;
-      $('val-name').textContent='All charts';
-      $('val-desc').textContent=names.length+' charts loaded';
-    }else if(selected&&getData(selected)){
-      // Include the selected chart + all its descendants that have data
-      const descendants=getDescendants(selected).filter(n=>getData(n));
-      showCharts=[selected,...descendants];
-      const charts=getFullManifest();
-      const chart=charts[selected];
-      $('val-name').innerHTML=esc(displayName(selected))+(isBuiltin(selected)?' <span class="builtin-tag">built-in</span>':'');
-      $('val-desc').textContent=chart?chart.description||'':'';
-    }else{
-      showCharts=names;selected='__all__';
-      $('val-name').textContent='All charts';$('val-desc').textContent='';
-    }
-
-    let html='',totalMatches=0;
-    const q=query.toLowerCase();
-
-    for(const name of showCharts){
-      const data=getData(name);
-      if(!data)continue;
-      const flat=[];flatten(data,'',flat);
-      let filtered=flat;
-      if(query) filtered=flat.filter(e=>e.path.toLowerCase().includes(q)||String(e.val).toLowerCase().includes(q));
-      if(query&&!filtered.length)continue;
-      totalMatches+=filtered.length;
-
-      if(showCharts.length>1){
-        html+=`<div style="padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1;">`;
-        html+=esc(displayName(name));
-        if(isBuiltin(name)) html+=` <span class="builtin-tag">built-in</span>`;
-        html+=` <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--accent-dim);color:var(--accent);">${filtered.length} ${query?'matches':'keys'}</span>`;
-        html+=`</div>`;
-      }
-
-      for(const entry of filtered){
-        const pathHtml=query?highlight(entry.path,query):esc(entry.path);
-        const valDisplay=entry.val===null?'null':entry.val;
-        const valHtml=query?highlight(valDisplay,query):esc(valDisplay);
-        html+=`<div class="row"><span class="path">${pathHtml}</span><span class="sep">=</span><span class="val ${entry.type}">${valHtml}</span></div>`;
-      }
-    }
-
-    if(query&&!totalMatches){
-      statusLine.innerHTML='';
-      box.innerHTML=`<div class="empty">No matches for "${esc(query)}"</div>`;
-      return;
-    }
-    statusLine.innerHTML=query
-      ?`<span class="ct">${totalMatches}</span> match${totalMatches===1?'':'es'} for "${esc(query)}"`
-      :`<span class="ct">${totalMatches}</span> total keys`;
-    box.innerHTML=html;
-  }
-
-  // ── Events: Add values file ──
-  $('add-btn').onclick=()=>{$('add-panel').classList.toggle('open');$('add-chart-panel').classList.remove('open');$('name-in').focus();};
-  $('cancel-btn').onclick=()=>{$('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';};
-
-  $('file-in').onchange=async(e)=>{
-    const files=Array.from(e.target.files||[]);
-    if(!files.length)return;
-    if(files.length>1){
-      let ok=0,fail=0;
-      for(const f of files){
-        try{userData[f.name.replace(/\.(ya?ml|txt)$/i,'')]=jsyaml.load(await f.text())||{};ok++;}
-        catch(e){fail++;}
-      }
-      toast(`Loaded ${ok} file${ok===1?'':'s'}${fail?`, ${fail} failed`:''}`,fail>0&&ok===0);
-      saveState();
-      $('add-panel').classList.remove('open');$('file-in').value='';
-      selected='__all__';renderTree();renderValues();return;
-    }
-    $('yaml-in').value=await files[0].text();
-    if(!$('name-in').value)$('name-in').value=files[0].name.replace(/\.(ya?ml|txt)$/i,'');
-  };
-
-  $('save-btn').onclick=()=>{
-    const name=$('name-in').value.trim(),yaml=$('yaml-in').value;
-    if(!name){toast('Name required',true);return;}
-    if(!yaml.trim()){toast('Paste or upload YAML',true);return;}
-    try{
-      userData[name]=jsyaml.load(yaml)||{};
-      selected=name;toast(`Added "${name}"`);
-      saveState();
-      $('add-panel').classList.remove('open');$('name-in').value='';$('yaml-in').value='';$('file-in').value='';
-      renderTree();renderValues();
-    }catch(e){toast('YAML parse error: '+(e.reason||e.message),true);}
-  };
-
-  // ── Events: Add chart folder ──
-  let pendingChartEntries={};
-
-  $('add-chart-btn').onclick=()=>{$('add-chart-panel').classList.toggle('open');$('add-panel').classList.remove('open');};
-  $('cancel-chart-btn').onclick=()=>{$('add-chart-panel').classList.remove('open');pendingChartEntries={};$('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';};
-
-  $('chart-folder-in').onchange=async(e)=>{
-    const files=Array.from(e.target.files||[]);
-    if(!files.length)return;
-
-    const statusEl=$('chart-upload-status');
-    statusEl.textContent='Scanning chart folder...';
-    statusEl.style.color='var(--text2)';
-    pendingChartEntries={};
-
-    try{
-      const fileMap={};
-      for(const f of files){
-        const path=f.webkitRelativePath||f.name;
-        const lower=path.toLowerCase();
-        if(lower.endsWith('/chart.yaml')||lower.endsWith('/values.yaml')||lower==='chart.yaml'||lower==='values.yaml'){
-          fileMap[path]=await f.text();
-        }
-      }
-
-      const tree=buildChartTree(fileMap,jsyaml.load.bind(jsyaml));
-      pendingChartEntries=tree;
-      const chartCount=Object.keys(tree.entries).length;
-      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tree.entries).map(k=>displayName(k)).join(', ')}`;
-      statusEl.style.color='var(--green)';
-      $('save-chart-btn').disabled=false;
-
-    }catch(err){
-      statusEl.textContent='Error: '+err.message;
-      statusEl.style.color='var(--red)';
-    }
-  };
-
-  // Parse a .tgz buffer into a flat {path: content} map using fflate
-  function parseTgz(buffer){
-    return new Promise((resolve,reject)=>{
-      try{
-        const uint8=new Uint8Array(buffer);
-        fflate.gunzip(uint8,(err,decompressed)=>{
-          if(err)return reject(err);
-          const fileMap={};
-          let off=0;
-          while(off+512<=decompressed.length){
-            // Read tar header
-            const nameBytes=decompressed.slice(off,off+100);
-            let name='';
-            for(let i=0;i<nameBytes.length&&nameBytes[i]!==0;i++) name+=String.fromCharCode(nameBytes[i]);
-            name=name.replace(/^\.\//,'');
-            if(!name){off+=512;continue;}
-            const sizeOctet=decompressed.slice(off+124,off+136);
-            let sizeStr='';
-            for(let i=0;i<sizeOctet.length&&sizeOctet[i]!==0;i++) sizeStr+=String.fromCharCode(sizeOctet[i]);
-            const size=parseInt(sizeStr.trim(),8)||0;
-            const typeFlag=decompressed[off+156];
-            off+=512;
-            if(typeFlag!==53&&typeFlag!==55&&name){ // not directory
-              const lower=name.toLowerCase();
-              if(lower.endsWith('/chart.yaml')||lower.endsWith('/values.yaml')||lower==='chart.yaml'||lower==='values.yaml'){
-                // Strip leading chart-name/ prefix (first path segment) so paths match folder upload convention
-                const parts=name.split('/');
-                const normalized=parts.length>1?parts.slice(1).join('/'):name;
-                if(normalized){
-                  try{fileMap[normalized]=new TextDecoder().decode(decompressed.slice(off,off+size));}catch(e){}
-                }
-              }
-            }
-            off+=Math.ceil(size/512)*512;
-          }
-          resolve(fileMap);
-        });
-      }catch(e){reject(e);}
+  function attachTreeEvents(el) {
+    el.querySelectorAll('.tree-node:not(.disabled)').forEach(node => {
+      node.addEventListener('click', e => {
+        if (e.target.classList.contains('tree-del')) return;
+        state.selected = node.dataset.name;
+        renderTree();
+        renderValues();
+      });
+    });
+    el.querySelectorAll('.tree-del').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        removeChart(btn.dataset.del);
+      });
     });
   }
 
-  $('chart-tgz-in').onchange=async(e)=>{
-    const file=e.target.files&&e.target.files[0];
-    if(!file)return;
-    const statusEl=$('chart-upload-status');
-    statusEl.textContent='Reading .tgz...';
-    statusEl.style.color='var(--text2)';
-    pendingChartEntries={};
-    try{
-      const buffer=await file.arrayBuffer();
-      const fileMap=await parseTgz(buffer);
+  function removeChart(key) {
+    const entry = state.charts[key];
+    if (!entry) return;
+    // Collect this key + all descendant keys
+    const toRemove = [];
+    function collect(k) {
+      toRemove.push(k);
+      const e = state.charts[k];
+      if (e) (e.subcharts || []).forEach(collect);
+    }
+    collect(key);
 
-      const tree=buildChartTree(fileMap,jsyaml.load.bind(jsyaml),file.name.replace(/\.(tgz|tar\.gz)$/i,''));
-      pendingChartEntries=tree;
-      const chartCount=Object.keys(tree.entries).length;
-      statusEl.textContent=`Found ${chartCount} chart${chartCount===1?'':'s'}: ${Object.keys(tree.entries).map(k=>displayName(k)).join(', ')}`;
-      statusEl.style.color='var(--green)';
-      $('save-chart-btn').disabled=false;
-    }catch(err){
-      statusEl.textContent='Error: '+err.message;
-      statusEl.style.color='var(--red)';
+    // Also remove from parent's subcharts list
+    if (entry.parentKey) {
+      const parent = state.charts[entry.parentKey];
+      if (parent && parent.subcharts) {
+        const idx = parent.subcharts.indexOf(key);
+        if (idx > -1) parent.subcharts.splice(idx, 1);
+      }
+    }
+
+    for (const k of toRemove) {
+      delete state.charts[k];
+      const idx = state.chartOrder.indexOf(k);
+      if (idx > -1) state.chartOrder.splice(idx, 1);
+      // Clear any selected values from removed chart
+      for (const sv of [...state.selectedVals]) {
+        if (sv.startsWith(k + '::')) state.selectedVals.delete(sv);
+      }
+    }
+
+    if (toRemove.includes(state.selected) || state.selected === 'all') {
+      state.selected = state.chartOrder.length > 0 ? 'all' : null;
+    }
+
+    toast(`Removed "${displayName(key)}"`);
+    updateBatchBar();
+    renderTree();
+    renderValues();
+  }
+
+  // ── Scan directory recursively ──
+  async function scanDir(dirHandle, rootHandle, relPathPrefix) {
+    let chartMeta = null;
+    let valuesText = null;
+    let valuesRelPath = null;
+
+    // Try Chart.yaml
+    try {
+      const chartFile = await dirHandle.getFileHandle('Chart.yaml');
+      const file = await chartFile.getFile();
+      chartMeta = jsyaml.load(await file.text()) || {};
+    } catch (e) {
+      try {
+        const chartFile = await dirHandle.getFileHandle('chart.yaml');
+        const file = await chartFile.getFile();
+        chartMeta = jsyaml.load(await file.text()) || {};
+      } catch (e2) { /* no Chart.yaml here */ }
+    }
+
+    // Try values.yaml
+    const valFile = relPathPrefix ? relPathPrefix + '/values.yaml' : 'values.yaml';
+    try {
+      const vfh = await dirHandle.getFileHandle('values.yaml');
+      const file = await vfh.getFile();
+      valuesText = await file.text();
+      valuesRelPath = valFile;
+    } catch (e) { /* no values.yaml */ }
+
+    // Recurse into charts/ subdirectory
+    let subchartEntries = [];
+    try {
+      const chartsDir = await dirHandle.getDirectoryHandle('charts');
+      for await (const [name, handle] of chartsDir.entries()) {
+        if (handle.kind === 'directory') {
+          const subRelPath = relPathPrefix ? relPathPrefix + '/charts/' + name : 'charts/' + name;
+          const sub = await scanDir(handle, rootHandle, subRelPath);
+          if (sub) subchartEntries.push(sub);
+        }
+      }
+    } catch (e) { /* no charts/ subdir */ }
+
+    if (!chartMeta && !valuesText && subchartEntries.length === 0) return null;
+
+    const name = (chartMeta && chartMeta.name) || dirHandle.name || 'unknown';
+    const version = (chartMeta && chartMeta.version) || '';
+    const description = (chartMeta && chartMeta.description) || '';
+    let values = null;
+    if (valuesText) {
+      try { values = jsyaml.load(valuesText) || {}; } catch (e) { values = {}; }
+    }
+
+    return {
+      name,
+      version,
+      description,
+      rootHandle,
+      valuesRelPath,
+      values,
+      subchartEntries,
+    };
+  }
+
+  // ── Register scanned result into state ──
+  function registerEntry(entry, parentKey, rootKey) {
+    // Build a unique key: for root it's the name, for subcharts it's rootKey|name
+    const key = parentKey === null ? entry.name : (rootKey + '|' + entry.name);
+
+    const chartEntry = {
+      key,
+      name: entry.name,
+      version: entry.version,
+      description: entry.description,
+      rootHandle: entry.rootHandle,
+      valuesRelPath: entry.valuesRelPath,
+      values: entry.values,
+      subcharts: [],
+      parentKey: parentKey,
+    };
+
+    state.charts[key] = chartEntry;
+    state.chartOrder.push(key);
+
+    const effectiveRoot = parentKey === null ? key : rootKey;
+    for (const sub of (entry.subchartEntries || [])) {
+      const subKey = registerEntry(sub, key, effectiveRoot);
+      chartEntry.subcharts.push(subKey);
+    }
+
+    return key;
+  }
+
+  // ── Add chart folder (File System Access API) ──
+  $('add-chart-btn').onclick = async () => {
+    if (!hasFSAPI) {
+      toast('File System Access API not supported in this browser. Use Chrome or Edge.', true);
+      return;
+    }
+    let dirHandle;
+    try {
+      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    } catch (e) {
+      if (e.name !== 'AbortError') toast('Could not open directory: ' + e.message, true);
+      return;
+    }
+    try {
+      const result = await scanDir(dirHandle, dirHandle, '');
+      if (!result) {
+        toast('No Chart.yaml or values.yaml found in selected directory.', true);
+        return;
+      }
+      const rootKey = registerEntry(result, null, null);
+      state.selected = rootKey;
+      const total = countAllDescendants(rootKey);
+      toast(`Added "${result.name}" (${total} chart${total === 1 ? '' : 's'})`);
+      renderTree();
+      renderValues();
+    } catch (e) {
+      toast('Error scanning directory: ' + e.message, true);
     }
   };
 
-  $('save-chart-btn').onclick=()=>{
-    if(!pendingChartEntries.root)return;
-    const{entries,data,root}=pendingChartEntries;
+  function countAllDescendants(key) {
+    const entry = state.charts[key];
+    if (!entry) return 0;
+    let n = 1;
+    for (const sk of (entry.subcharts || [])) n += countAllDescendants(sk);
+    return n;
+  }
 
-    // Merge into state without overwriting existing
-    for(const[name,entry] of Object.entries(entries)){
-      userManifestCharts[name]=entry;
+  // ── Add YAML file (File System Access API) ──
+  $('add-yaml-btn').onclick = async () => {
+    if (!hasFSAPI) {
+      toast('File System Access API not supported in this browser. Use Chrome or Edge.', true);
+      return;
     }
-    for(const[name,vals] of Object.entries(data)){
-      userData[name]=vals;
+    let fileHandles;
+    try {
+      fileHandles = await window.showOpenFilePicker({
+        multiple: true,
+        types: [{ description: 'YAML files', accept: { 'text/yaml': ['.yaml', '.yml'] } }],
+      });
+    } catch (e) {
+      if (e.name !== 'AbortError') toast('Could not open file: ' + e.message, true);
+      return;
     }
-    if(!userRoots.includes(root)) userRoots.push(root);
-
-    toast(`Added chart tree: ${root} (${Object.keys(entries).length} charts)`);
-    saveState();
-    $('add-chart-panel').classList.remove('open');
-    pendingChartEntries={};
-    $('chart-upload-status').textContent='';$('save-chart-btn').disabled=true;$('chart-folder-in').value='';$('chart-tgz-in').value='';
-    selected=root;
-    renderTree();renderValues();
+    let added = 0;
+    for (const fh of fileHandles) {
+      try {
+        const file = await fh.getFile();
+        const text = await file.text();
+        const values = jsyaml.load(text) || {};
+        const name = file.name.replace(/\.(ya?ml)$/i, '');
+        const key = name;
+        state.charts[key] = {
+          key,
+          name,
+          version: '',
+          description: '',
+          rootHandle: null,   // read-only: no directory handle
+          valuesRelPath: file.name,
+          values,
+          subcharts: [],
+          parentKey: null,
+        };
+        state.chartOrder.push(key);
+        added++;
+        state.selected = key;
+      } catch (e) {
+        toast('Failed to load ' + (fh.name || 'file') + ': ' + e.message, true);
+      }
+    }
+    if (added > 0) {
+      toast(`Loaded ${added} YAML file${added === 1 ? '' : 's'}`);
+      renderTree();
+      renderValues();
+    }
   };
 
-  // Keep values panel at least as tall as the tree panel when the tree is
-  // taller. If the values panel is already taller (lots of keys), leave it
-  // alone — the existing min/max-height CSS handles that case.
-  function syncPanelHeights(){
-    const sb=$('scrollbox');
-    if(!sb)return;
-    const tree=document.querySelector('.tree-panel');
-    const values=document.querySelector('.values-panel');
-    if(!tree||!values)return;
-    // Clear any previous override so we measure natural heights.
-    sb.style.minHeight='';
-    sb.style.maxHeight='';
-    const treeH=tree.getBoundingClientRect().height;
-    const valuesH=values.getBoundingClientRect().height;
-    if(treeH>valuesH){
-      const sbH=sb.getBoundingClientRect().height;
-      const nonScroll=valuesH-sbH;
-      const target=Math.max(0,treeH-nonScroll);
-      sb.style.minHeight=target+'px';
-      sb.style.maxHeight=target+'px';
+  // ── Render values ──
+  function getChartKeysToShow() {
+    const all = state.chartOrder.filter(k => state.charts[k]);
+    if (!state.selected || state.selected === 'all') return all;
+    const entry = state.charts[state.selected];
+    if (!entry) return all;
+    // Include selected + all descendants
+    const result = [];
+    function collect(k) {
+      result.push(k);
+      const e = state.charts[k];
+      if (e) (e.subcharts || []).forEach(collect);
+    }
+    collect(state.selected);
+    return result;
+  }
+
+  function renderValues() {
+    const box = $('scrollbox');
+    const query = $('search').value.trim();
+    $('clear-x').style.display = query ? 'block' : 'none';
+    const statusLine = $('status-line');
+
+    const hasCharts = state.chartOrder.length > 0;
+
+    if (!hasCharts) {
+      $('val-name').textContent = 'No charts loaded';
+      $('val-desc').textContent = '';
+      statusLine.innerHTML = '';
+      box.innerHTML = '<div class="empty"><span>&#9096;</span>Add a chart folder or YAML file to get started</div>';
+      return;
+    }
+
+    const showKeys = getChartKeysToShow();
+
+    if (state.selected === 'all' || !state.selected) {
+      $('val-name').textContent = 'All charts';
+      $('val-desc').textContent = state.chartOrder.filter(k => !state.charts[k].parentKey).length + ' root charts loaded';
+    } else {
+      const entry = state.charts[state.selected];
+      $('val-name').textContent = entry ? entry.name : displayName(state.selected);
+      $('val-desc').textContent = entry ? (entry.description || '') : '';
+    }
+
+    let html = '';
+    let totalMatches = 0;
+    const q = query.toLowerCase();
+
+    for (const key of showKeys) {
+      const entry = state.charts[key];
+      if (!entry || !entry.values) continue;
+      const flat = [];
+      flatten(entry.values, '', flat);
+      let filtered = flat;
+      if (query) filtered = flat.filter(e => e.path.toLowerCase().includes(q) || String(e.val).toLowerCase().includes(q));
+      if (query && !filtered.length) continue;
+      totalMatches += filtered.length;
+
+      if (showKeys.length > 1) {
+        html += `<div style="padding:8px 16px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:1;">`;
+        html += esc(entry.name);
+        if (!entry.rootHandle) html += ` <span style="font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text3);">read-only</span>`;
+        html += ` <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--accent-dim);color:var(--accent);">${filtered.length} ${query ? 'matches' : 'keys'}</span>`;
+        html += `</div>`;
+      }
+
+      for (const e of filtered) {
+        const svKey = key + '::' + e.path;
+        const isChecked = state.selectedVals.has(svKey);
+        const pathHtml = query ? highlight(e.path, query) : esc(e.path);
+        const valDisplay = e.val === null ? 'null' : e.val;
+        const valHtml = query ? highlight(valDisplay, query) : esc(valDisplay);
+        const canCheck = !!entry.rootHandle; // only writable entries get checkboxes that matter
+        html += `<label class="val-row${isChecked ? ' checked' : ''}" data-key="${esc(svKey)}">`;
+        html += `<input type="checkbox" class="val-cb"${isChecked ? ' checked' : ''}${!canCheck ? ' disabled title="Read-only file"' : ''}>`;
+        html += `<span class="val-path">${pathHtml}</span>`;
+        html += `<span class="val-sep">=</span>`;
+        html += `<span class="val-val ${e.type}">${valHtml}</span>`;
+        html += `</label>`;
+      }
+    }
+
+    if (query && !totalMatches) {
+      statusLine.innerHTML = '';
+      box.innerHTML = `<div class="empty">No matches for "${esc(query)}"</div>`;
+      return;
+    }
+
+    statusLine.innerHTML = query
+      ? `<span class="ct">${totalMatches}</span> match${totalMatches === 1 ? '' : 'es'} for "${esc(query)}"`
+      : `<span class="ct">${totalMatches}</span> total keys`;
+
+    box.innerHTML = html;
+
+    // Attach checkbox events
+    box.querySelectorAll('.val-row').forEach(row => {
+      const cb = row.querySelector('.val-cb');
+      if (!cb || cb.disabled) return;
+      cb.addEventListener('change', () => {
+        const svKey = row.dataset.key;
+        if (cb.checked) {
+          state.selectedVals.add(svKey);
+          row.classList.add('checked');
+        } else {
+          state.selectedVals.delete(svKey);
+          row.classList.remove('checked');
+        }
+        updateBatchBar();
+      });
+    });
+
+    queueSync();
+  }
+
+  // ── Batch bar ──
+  function updateBatchBar() {
+    const count = state.selectedVals.size;
+    const bar = $('batch-bar');
+    if (count === 0) {
+      bar.classList.add('hidden');
+    } else {
+      bar.classList.remove('hidden');
+      $('sel-count').textContent = `${count} selected`;
     }
   }
-  function queueSync(){requestAnimationFrame(syncPanelHeights);}
-  // Re-sync whenever either panel's layout might change.
-  const _rt=renderTree,_rv=renderValues;
-  renderTree=function(){_rt.apply(this,arguments);queueSync();};
-  renderValues=function(){_rv.apply(this,arguments);queueSync();};
-  window.addEventListener('resize',queueSync);
 
-  let t,tt;
-  $('search').oninput=()=>{clearTimeout(t);t=setTimeout(renderValues,60);};
-  $('clear-x').onclick=()=>{$('search').value='';renderValues();};
-  $('tree-search').oninput=()=>{clearTimeout(tt);tt=setTimeout(()=>{treeQuery=$('tree-search').value.trim();renderTree();},60);};
-  $('tree-clear-x').onclick=()=>{$('tree-search').value='';treeQuery='';renderTree();};
+  $('clear-sel-btn').onclick = () => {
+    state.selectedVals.clear();
+    updateBatchBar();
+    renderValues();
+  };
 
-  loadBuiltins();
+  $('apply-btn').onclick = async () => {
+    const newValStr = $('new-val').value;
+    if (!newValStr && newValStr !== '0') {
+      toast('Enter a new value first', true);
+      return;
+    }
+    if (state.selectedVals.size === 0) {
+      toast('No values selected', true);
+      return;
+    }
+
+    // Group by (chartKey, valuesRelPath)
+    // svKey format: "chartKey::dotPath"
+    const groups = new Map(); // chartKey -> [dotPath, ...]
+    for (const svKey of state.selectedVals) {
+      const sepIdx = svKey.indexOf('::');
+      if (sepIdx === -1) continue;
+      const chartKey = svKey.slice(0, sepIdx);
+      const dotPath = svKey.slice(sepIdx + 2);
+      const entry = state.charts[chartKey];
+      if (!entry || !entry.rootHandle) continue; // skip read-only
+      if (!groups.has(chartKey)) groups.set(chartKey, []);
+      groups.get(chartKey).push(dotPath);
+    }
+
+    if (groups.size === 0) {
+      toast('All selected values are read-only', true);
+      return;
+    }
+
+    let totalUpdated = 0;
+    let filesWritten = 0;
+    const errors = [];
+
+    for (const [chartKey, dotPaths] of groups) {
+      const entry = state.charts[chartKey];
+      try {
+        // Navigate to the file from rootHandle
+        const relPath = entry.valuesRelPath;
+        const parts = relPath.split('/');
+        let dirHandle = entry.rootHandle;
+        for (let i = 0; i < parts.length - 1; i++) {
+          dirHandle = await dirHandle.getDirectoryHandle(parts[i]);
+        }
+        const fileName = parts[parts.length - 1];
+        const fileHandle = await dirHandle.getFileHandle(fileName);
+
+        // Read current content
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+        const obj = jsyaml.load(text) || {};
+
+        // Apply all changes
+        for (const dotPath of dotPaths) {
+          // Find original value to coerce type
+          const keys = dotPath.split('.');
+          let cur = obj;
+          for (const k of keys.slice(0, -1)) {
+            if (cur == null || typeof cur !== 'object') { cur = null; break; }
+            cur = cur[k];
+          }
+          const lastKey = keys[keys.length - 1];
+          const original = cur != null && typeof cur === 'object' ? cur[lastKey] : undefined;
+          const coerced = coerceValue(newValStr, original);
+          setNestedPath(obj, dotPath, coerced);
+          totalUpdated++;
+        }
+
+        // Serialize and write back
+        const yaml = jsyaml.dump(obj, { indent: 2, lineWidth: -1 });
+        const writable = await fileHandle.createWritable();
+        await writable.write(yaml);
+        await writable.close();
+
+        // Update in-memory values
+        entry.values = obj;
+        filesWritten++;
+
+      } catch (e) {
+        errors.push(`${displayName(chartKey)}: ${e.message}`);
+      }
+    }
+
+    if (errors.length > 0) {
+      toast('Write errors: ' + errors.join('; '), true);
+    } else {
+      toast(`Updated ${totalUpdated} value${totalUpdated === 1 ? '' : 's'} in ${filesWritten} file${filesWritten === 1 ? '' : 's'}`);
+    }
+
+    // Clear selection and re-render
+    state.selectedVals.clear();
+    $('new-val').value = '';
+    updateBatchBar();
+    renderValues();
+  };
+
+  // ── Panel height sync ──
+  function syncPanelHeights() {
+    const sb = $('scrollbox');
+    if (!sb) return;
+    const tree = document.querySelector('.tree-panel');
+    const values = document.querySelector('.values-panel');
+    if (!tree || !values) return;
+    sb.style.minHeight = '';
+    sb.style.maxHeight = '';
+    const treeH = tree.getBoundingClientRect().height;
+    const valuesH = values.getBoundingClientRect().height;
+    if (treeH > valuesH) {
+      const sbH = sb.getBoundingClientRect().height;
+      const nonScroll = valuesH - sbH;
+      const target = Math.max(0, treeH - nonScroll);
+      sb.style.minHeight = target + 'px';
+      sb.style.maxHeight = target + 'px';
+    }
+  }
+  function queueSync() { requestAnimationFrame(syncPanelHeights); }
+  window.addEventListener('resize', queueSync);
+
+  // ── Search events ──
+  let searchT, treeT;
+  $('search').oninput = () => { clearTimeout(searchT); searchT = setTimeout(renderValues, 60); };
+  $('clear-x').onclick = () => { $('search').value = ''; renderValues(); };
+  $('tree-search').oninput = () => {
+    clearTimeout(treeT);
+    treeT = setTimeout(() => { renderTree(); }, 60);
+  };
+  $('tree-clear-x').onclick = () => { $('tree-search').value = ''; renderTree(); };
+
+  // ── Initial render ──
+  renderTree();
+  renderValues();
 })();
 </script>
 </body>

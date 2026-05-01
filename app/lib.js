@@ -111,6 +111,35 @@ const HelmLib=(function(){
     return {root:r,entries:nsEntries,data:nsData};
   }
 
-  return {flatten,esc,highlight,displayName,dirOf,buildChartTree};
+  // Set value at dot-path in object (mutates obj)
+  function setNestedPath(obj, path, value) {
+    const keys = path.split('.');
+    let cur = obj;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (cur == null || typeof cur !== 'object') return;
+      if (cur[keys[i]] == null) cur[keys[i]] = {};
+      cur = cur[keys[i]];
+    }
+    if (cur != null && typeof cur === 'object') {
+      cur[keys[keys.length - 1]] = value;
+    }
+  }
+
+  // Coerce string input to match original value type
+  function coerceValue(str, original) {
+    if (typeof original === 'number') {
+      const n = Number(str);
+      return isNaN(n) ? str : n;
+    }
+    if (typeof original === 'boolean') {
+      if (str === 'true') return true;
+      if (str === 'false') return false;
+      return str;
+    }
+    if (original === null && str === 'null') return null;
+    return str;
+  }
+
+  return {flatten,esc,highlight,displayName,dirOf,buildChartTree,setNestedPath,coerceValue};
 })();
 if(typeof module!=='undefined') module.exports=HelmLib;
