@@ -19,7 +19,26 @@
       "Bash(cp -r node_modules/js-yaml .claude/dev-root/vendor/js-yaml)",
       "Bash(cp -r node_modules/fflate .claude/dev-root/vendor/fflate)",
       "Bash(PYTHONIOENCODING=utf-8 python scripts/extract-chart-data.py chart .claude/dev-root/values)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node --test tests/unit.js)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git tag *)",
+      "Bash(gh run *)",
+      "PowerShell(gh run list --repo seab4ng/helm-values-veiwer --limit 3)",
+      "Bash(curl -s \"https://api.github.com/repos/seab4ng/helm-values-veiwer/actions/runs?per_page=3\")",
+      "Bash(python3 -c \"import sys,json; runs=json.load\\(sys.stdin\\)['workflow_runs']; [print\\(r['id'], r['status'], r['conclusion'], r['name'], r['head_branch']\\) for r in runs]\")",
+      "PowerShell(Start-Sleep -Seconds 15; $r = Invoke-RestMethod \"https://api.github.com/repos/seab4ng/helm-values-veiwer/actions/runs?per_page=5\"; $r.workflow_runs | Select-Object id, status, conclusion, name, head_branch | Format-Table)",
+      "PowerShell($jobs = Invoke-RestMethod \"https://api.github.com/repos/seab4ng/helm-values-veiwer/actions/runs/25230614622/jobs\"; $jobs.jobs | Select-Object name, status, conclusion | Format-Table; Write-Host \"---\"; $jobs.jobs | ForEach-Object { if \\($_.conclusion -eq \"failure\"\\) { Write-Host \"FAILED JOB: $\\($_.name\\)\"; $_.steps | Select-Object name, conclusion | Format-Table } })",
+      "Bash(winget list *)",
+      "Bash(git commit *)",
+      "Bash(grep -n \"type:'arr'\\\\|type: 'arr'\\\\|'{}'\\\\\\\\|'\\\\\\\\[\\\\\\\\]'\" C:/Users/Jinxx/Downloads/vier/app/lib.js)",
+      "Bash(npm audit *)",
+      "Bash(docker run *)"
     ]
   }
 }
