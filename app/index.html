@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Helm Values Viewer</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;}
   :root{
     --bg:#0e1117;--bg2:#161b22;--bg3:#1c2129;--bg4:#21262d;
@@ -14,8 +13,8 @@
     --green:#3fb950;--green-dim:#1a3a2a;
     --purple:#bc8cff;--purple-dim:#2d1f4e;
     --amber:#d29922;--red:#f85149;--cyan:#76e4f7;
-    --font:'Outfit',-apple-system,sans-serif;
-    --mono:'JetBrains Mono','Fira Code',monospace;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    --mono:'Cascadia Code','Consolas','Menlo','Monaco',monospace;
     --radius:8px;
   }
   body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.5;}
@@ -282,7 +281,7 @@
 
 <div class="toast-area" id="toast-area"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script src="/vendor/js-yaml.min.js"></script>
 <script src="lib.js"></script>
 <script>
 (function(){
@@ -390,11 +389,10 @@
 
   // ── State ──
   const state = {
-    charts: {},        // key -> chart entry
-    chartOrder: [],    // keys in add order
-    selected: null,    // currently viewed chart key (or 'all')
-    query: '',         // value search string
-    selectedVals: new Set(), // "chartKey::dotPath" strings
+    charts: {},
+    chartOrder: [],
+    selected: null,
+    selectedVals: new Set(),
   };
 
   const $ = id => document.getElementById(id);
