@@ -143,9 +143,8 @@
 
   /* Batch edit bar */
   #batch-bar{
-    position:sticky;bottom:0;z-index:10;
     padding:10px 16px;
-    background:var(--bg3);border-top:1px solid var(--border);
+    background:var(--bg3);border-bottom:1px solid var(--border);
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   }
   #batch-bar.hidden{display:none;}
@@ -227,13 +226,13 @@
         </div>
       </div>
       <div class="status-line" id="status-line"></div>
-      <div class="scrollbox" id="scrollbox"></div>
       <div id="batch-bar" class="hidden">
         <span id="sel-count">0 selected</span>
         <input id="new-val" type="text" placeholder="New value..." />
-        <button class="btn btn-primary" id="apply-btn">Apply to selected files</button>
+        <button class="btn btn-primary" id="apply-btn">Apply to selected fields</button>
         <button class="btn btn-danger" id="clear-sel-btn">Clear selection</button>
       </div>
+      <div class="scrollbox" id="scrollbox"></div>
     </div>
   </div>
 </div>
@@ -244,7 +243,25 @@
 <script src="lib.js"></script>
 <script>
 (function(){
-  const {flatten, esc, highlight, displayName, setNestedPath, coerceValue} = HelmLib;
+  const {flatten, esc, highlight, displayName} = HelmLib;
+
+  function setNestedPath(obj, path, value) {
+    const keys = path.split('.');
+    let cur = obj;
+    for (let i = 0; i < keys.length - 1; i++) {
+      if (cur == null || typeof cur !== 'object') return;
+      if (cur[keys[i]] == null) cur[keys[i]] = {};
+      cur = cur[keys[i]];
+    }
+    if (cur != null && typeof cur === 'object') cur[keys[keys.length - 1]] = value;
+  }
+
+  function coerceValue(str, original) {
+    if (typeof original === 'number') { const n = Number(str); return isNaN(n) ? str : n; }
+    if (typeof original === 'boolean') { if (str === 'true') return true; if (str === 'false') return false; return str; }
+    if (original === null && str === 'null') return null;
+    return str;
+  }
 
   // ── State ──
   const state = {
