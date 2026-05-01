@@ -320,3 +320,135 @@ test('coerceValue: coerces integer string to number, preserves zero', () => {
 test('coerceValue: coerces float string to number', () => {
   assert.equal(coerceValue('3.14', 1.0), 3.14);
 });
+
+// ─────────────────────────────────────────────
+// Additional flatten tests
+// ─────────────────────────────────────────────
+
+const {describe} = require('node:test');
+
+describe('flatten: additional cases', () => {
+  test('deeply nested object 3 levels', () => {
+    const out = [];
+    flatten({a: {b: {c: 42}}}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, 'a.b.c');
+    assert.equal(out[0].val, '42');
+    assert.equal(out[0].type, 'num');
+  });
+
+  test('mixed array of objects', () => {
+    const out = [];
+    flatten({ports: [{name: 'http', port: 80}]}, '', out);
+    const paths = out.map(e => e.path);
+    assert.ok(paths.includes('ports[0].name'), 'expected ports[0].name');
+    assert.ok(paths.includes('ports[0].port'), 'expected ports[0].port');
+    const nameEntry = out.find(e => e.path === 'ports[0].name');
+    const portEntry = out.find(e => e.path === 'ports[0].port');
+    assert.equal(nameEntry.val, 'http');
+    assert.equal(portEntry.val, '80');
+    assert.equal(portEntry.type, 'num');
+  });
+
+  test('boolean false value', () => {
+    const out = [];
+    flatten({enabled: false}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, 'enabled');
+    assert.equal(out[0].val, 'false');
+    assert.equal(out[0].type, 'bool');
+  });
+
+  test('null value in nested path', () => {
+    const out = [];
+    flatten({config: {key: null}}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, 'config.key');
+    assert.equal(out[0].val, null);
+    assert.equal(out[0].type, 'null');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional setNestedPath tests
+// ─────────────────────────────────────────────
+
+describe('setNestedPath: additional cases', () => {
+  test('overwrites existing nested value', () => {
+    const obj = {a: {b: 1}};
+    setNestedPath(obj, 'a.b', 2);
+    assert.equal(obj.a.b, 2);
+  });
+
+  test('single key with no dots', () => {
+    const obj = {};
+    setNestedPath(obj, 'port', 8080);
+    assert.equal(obj.port, 8080);
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional coerceValue tests
+// ─────────────────────────────────────────────
+
+describe('coerceValue: additional cases', () => {
+  test('empty string with string original returns empty string', () => {
+    assert.equal(coerceValue('', 'hello'), '');
+  });
+
+  test('"null" with string original returns string "null"', () => {
+    assert.equal(coerceValue('null', 'something'), 'null');
+  });
+
+  test('"maybe" with boolean original falls back to string', () => {
+    assert.equal(coerceValue('maybe', true), 'maybe');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional highlight tests
+// ─────────────────────────────────────────────
+
+describe('highlight: additional cases', () => {
+  test('query appears multiple times wraps both occurrences', () => {
+    const result = highlight('port portforward', 'port');
+    assert.equal(
+      result,
+      '<span class="hl">port</span> <span class="hl">port</span>forward'
+    );
+  });
+
+  test('empty query returns escaped input', () => {
+    assert.equal(highlight('<b>', ''), '&lt;b&gt;');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional buildChartTree tests
+// ─────────────────────────────────────────────
+
+describe('buildChartTree: additional cases', () => {
+  test('root with no values.yaml but has subcharts is still built', () => {
+    const fileMap = {
+      'Chart.yaml': jsonStr({name: 'rootchart', version: '1.0.0'}),
+      'charts/sub/Chart.yaml': jsonStr({name: 'sub', version: '0.1.0'}),
+      'charts/sub/values.yaml': jsonStr({key: 'val'}),
+    };
+    const tree = buildChartTree(fileMap, mockParse);
+    assert.equal(tree.root, 'rootchart');
+    assert.ok(tree.entries['rootchart'], 'root entry should exist');
+    assert.equal(tree.entries['rootchart'].values_file, undefined, 'root should have no values_file');
+    assert.ok(tree.entries['rootchart|sub'], 'subchart entry should exist');
+  });
+
+  test('subchart whose name comes from directory when Chart.yaml has no name field', () => {
+    const fileMap = {
+      'Chart.yaml': jsonStr({name: 'parent', version: '1.0.0'}),
+      'charts/mysubdir/Chart.yaml': jsonStr({version: '0.5.0'}),
+    };
+    const tree = buildChartTree(fileMap, mockParse);
+    const subKey = Object.keys(tree.entries).find(k => k !== 'parent');
+    assert.ok(subKey, 'a subchart entry should exist');
+    assert.equal(displayName(subKey), 'mysubdir');
+  });
+});

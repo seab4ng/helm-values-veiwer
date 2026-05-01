@@ -1,130 +1,95 @@
 # Helm Values Viewer
 
-A self-contained web UI that renders the dependency tree of a Helm umbrella chart and lets you live-search all `values.yaml` files across every chart and subchart. Values are baked into the Docker image at build time — no cluster connection or Helm binary needed at runtime.
+A browser-based editor for Helm chart values files. Load a chart folder or standalone values.yaml, search across all keys and nested fields, select values to change, and write the new values back to disk — without touching the terminal.
 
-## Project structure
+## Features
 
-```
-helm-values-viewer/
-├── Dockerfile
-├── nginx.conf
-├── docker-entrypoint.sh          # Replaces __APP_NAME__ / __APP_VERSION__ at container start
-├── app/
-│   ├── index.html                # Single-page app (IIFE, no build step)
-│   └── lib.js                    # Pure/testable helpers: flatten, esc, highlight,
-│                                 #   displayName, dirOf, buildChartTree (UMD module)
-├── scripts/
-│   └── extract-chart-data.py     # Build-time: walks chart tree, extracts values
-├── tests/
-│   └── unit.js                   # Node.js unit tests (node:test, no extra deps)
-└── chart/                        # <- COPY YOUR UMBRELLA CHART HERE
-    ├── Chart.yaml
-    ├── values.yaml
-    └── charts/
-        ├── argo-cd/
-        │   ├── Chart.yaml
-        │   ├── values.yaml
-        │   └── charts/
-        │       └── redis/
-        │           ├── Chart.yaml
-        │           └── values.yaml
-        └── cert-manager/
-            ├── Chart.yaml
-            └── values.yaml
+- Load a Helm chart folder (with subchart tree) or a single values.yaml
+- Full-text search across all keys and values at any nesting depth
+- Select multiple fields and batch-edit them to a new value
+- YAML mode for editing list and map fields
+- Changes write back to the actual files on disk (File System Access API)
+- Session persistence — reopen the browser and restore your loaded charts
+- Fully airgapped — no external network calls at runtime
+
+## Requirements
+
+- Chrome or Edge (File System Access API required for folder/file access)
+- Docker (to run the container) or any static file server
+
+## Quick start
+
+```bash
+docker run -p 8080:8080 sokushinbutsu/helm-values-editor:latest
 ```
 
-## How it works
-
-**At docker build time:**
-
-1. The `chart/` directory (your umbrella chart) is copied into the builder stage.
-2. `extract-chart-data.py` walks the chart recursively:
-   - Parses each `Chart.yaml` to discover the dependency tree.
-   - Extracts `values.yaml` from each chart and subchart.
-   - Handles `.tgz` archives in `charts/` (produced by `helm dependency build`).
-   - Produces `manifest.json` describing the full tree structure.
-3. The final nginx image contains only the static app (`index.html`, `lib.js`) plus the extracted values — no Python, no Helm binary.
-
-**At runtime:**
-
-- `docker-entrypoint.sh` substitutes `__APP_NAME__` and `__APP_VERSION__` placeholders in `index.html` before nginx starts.
-- The UI fetches `manifest.json` and renders the dependency tree in the left panel.
-- Clicking any chart loads its flattened values on the right.
-- Live search filters by key path or value as you type.
-- Users can add extra values files or whole chart archives directly in the browser — nothing is persisted server-side.
+Open http://localhost:8080 in Chrome or Edge.
 
 ## Usage
 
-### 1. Replace the example chart with yours
+1. Click **+ Add chart folder** and select a Helm chart directory. The app scans Chart.yaml and values.yaml recursively across all subcharts.
+2. Or click **+ Add YAML file** to load a single values.yaml.
+3. Use the search box to find any key or value across all loaded charts.
+4. Check the boxes next to the fields you want to change.
+5. Type a new value and click **Apply to selected fields**.
+   - For string, number, or boolean fields: type the value directly.
+   - For list or map fields: click **YAML** to switch to YAML input mode (e.g. `[80, 443]` or `key: value`).
+6. Changes are written back to the files on disk immediately.
 
+> Note: mixing field types (strings, lists, maps) in the same batch is not allowed. Select one type at a time.
+
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_NAME` | `my app` | Display name shown in the About dialog |
+| `APP_VERSION` | tag at build time | Version shown in the About dialog |
+
+Example with custom values:
 ```bash
-# Remove the example chart
-rm -rf chart/
-
-# Option A: copy a chart that already has its dependencies resolved
-cp -r /path/to/my-umbrella-chart chart/
-
-# Option B: resolve dependencies first
-cp -r /path/to/my-umbrella-chart chart/
-cd chart/ && helm dependency build && cd ..
+docker run -p 8080:8080 -e APP_NAME="Platform Tools" -e APP_VERSION="2.1.0" sokushinbutsu/helm-values-editor:latest
 ```
 
-### 2. Build
+## Build from source
 
 ```bash
-docker build -t helm-values-viewer .
+git clone https://github.com/seab4ng/helm-values-veiwer.git
+cd helm-values-veiwer
+docker build -t helm-values-editor .
+docker run -p 8080:8080 helm-values-editor
 ```
 
-### 3. Run
+## Run tests
 
-```bash
-docker run -p 8080:8080 helm-values-viewer
-```
-
-Open http://localhost:8080
-
-### 4. Custom name and version via environment variables
-
-```bash
-docker run -e APP_NAME="My Platform" -e APP_VERSION="2.0.0" -p 8080:8080 helm-values-viewer
-```
-
-The values appear in the header of the UI.
-
-## Runtime features
-
-- **Tree navigation** — left panel shows the full dependency tree; click any node to view its values.
-- **Subchart values** — selecting a parent chart also shows all descendant values, grouped by chart.
-- **Search** — type `image`, `port`, `replica`, etc. to filter keys and values across all visible charts in real time.
-- **Add values file** — upload or paste a single `values.yaml`; it appears as a standalone entry with no subchart tree.
-- **Add chart** — upload a chart folder (via the directory picker) or a `.tgz` archive; the app discovers all subcharts and builds the full dependency tree in the browser without any server round-trip.
-
-## Running tests
-
-Requires Node.js 18 or later. No extra dependencies.
+No dependencies required. Tests use Node.js built-in test runner.
 
 ```bash
 node --test tests/unit.js
 ```
 
-The test file covers `flatten`, `esc`, `highlight`, `displayName`, `dirOf`, and `buildChartTree` (including error cases, subchart discovery, namespace post-processing, and the `rootFallback` path).
+Test results are also published to GitHub Actions on every release.
 
-## CI/CD
+## CI / CD
 
+A GitHub Actions workflow runs on every version tag (`v*`):
+
+1. Runs the full unit test suite and publishes results to the Actions check run.
+2. If tests pass, builds the Docker image and pushes to Docker Hub as `sokushinbutsu/helm-values-editor:<tag>` and `latest`.
+
+To release a new version, create a tag:
 ```bash
-# Resolve chart dependencies and build
-cp -r ../my-umbrella-chart helm-values-viewer/chart/
-cd helm-values-viewer/chart && helm dependency build && cd ..
-
-# Build and push
-docker build -t registry.internal/helm-values-viewer:${TAG} .
-docker push registry.internal/helm-values-viewer:${TAG}
+git tag v1.2.3
+git push origin v1.2.3
 ```
 
-## Notes
+Required repository secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
 
-- Only `Chart.yaml` and `values.yaml` are extracted at build time — templates and other files are ignored.
-- `.tgz` subchart archives in `charts/` are extracted automatically during the build.
-- The final image is based on `nginx:1.27-alpine` (~25 MB). No Python interpreter is present at runtime.
-- Subcharts can be nested to any depth.
-- nginx listens on port 8080 (not 80).
+## Contributing
+
+- `app/index.html` — all frontend logic (single IIFE, no build step)
+- `app/lib.js` — pure utility functions (flatten, highlight, buildChartTree, etc.)
+- `tests/unit.js` — unit tests for lib.js
+- `Dockerfile` — two-stage build: node for vendoring js-yaml, nginx for serving
+- `nginx.conf` — static file serving config
+
+Fork the repo, make changes, run `node --test tests/unit.js`, open a PR.
