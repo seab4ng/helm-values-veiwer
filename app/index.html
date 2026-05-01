@@ -1038,7 +1038,7 @@
 
   // ── Session restore / dismiss ──
   $('restore-btn').onclick = restoreSession;
-  $('dismiss-banner-btn').onclick = () => $('session-banner').classList.add('hidden');
+  $('dismiss-banner-btn').onclick = () => { $('session-banner').classList.add('hidden'); dbClear().catch(()=>{}); };
 
   // ── About modal ──
   $('about-btn').onclick = () => $('about-modal-overlay').classList.remove('hidden');
