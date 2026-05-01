@@ -42,12 +42,11 @@ Open http://localhost:8080 in Chrome or Edge.
 
 | Variable | Default | Description |
 |---|---|---|
-| `APP_NAME` | `my app` | Display name shown in the About dialog |
 | `APP_VERSION` | tag at build time | Version shown in the About dialog |
 
 Example with custom values:
 ```bash
-docker run -p 8080:8080 -e APP_NAME="Platform Tools" -e APP_VERSION="2.1.0" sokushinbutsu/helm-values-editor:latest
+docker run -p 8080:8080 -e APP_VERSION="2.1.0" sokushinbutsu/helm-values-editor:latest
 ```
 
 ## Build from source
