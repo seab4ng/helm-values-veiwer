@@ -1037,7 +1037,7 @@
           }
           const lastKey = keys[keys.length - 1];
           const original = cur != null && typeof cur === 'object' ? cur[lastKey] : undefined;
-          const coerced = yamlMode ? parsedYamlVal : coerceValue(newValStr, original);
+          const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
           setNestedPath(obj, dotPath, coerced);
           totalUpdated++;
         }
