@@ -4,6 +4,11 @@ RUN npm install js-yaml@4.1.0
 
 FROM nginx:1.27-alpine
 
+LABEL maintainer="Yakir Veneci" \
+      org.opencontainers.image.authors="Yakir Veneci" \
+      org.opencontainers.image.url="https://github.com/seab4ng" \
+      org.opencontainers.image.source="https://github.com/seab4ng/helm-values-veiwer"
+
 RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf
 
 COPY nginx.conf           /etc/nginx/conf.d/default.conf
