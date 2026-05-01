@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-APP_NAME="${APP_NAME:-my app}"
+APP_NAME="${APP_NAME:-helm-values-editor}"
 APP_VERSION="${APP_VERSION:-none}"
 
 sed -i "s|__APP_NAME__|${APP_NAME}|g; s|__APP_VERSION__|${APP_VERSION}|g" \
