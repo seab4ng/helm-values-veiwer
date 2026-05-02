@@ -432,8 +432,6 @@
     // Feature 3: original values snapshot
     originalVals: {},       // {chartKey: {dotPath: serializedOrigVal}}
     showChangedOnly: false,
-    // Feature 6: undo stack
-    undoStack: [],          // [{fileHandle, prevContent, chartKey, dotPaths, label}]
     // Feature 7: backed up files
     backedUpFiles: new Set(), // "chartKey::relPath"
   };
@@ -652,7 +650,17 @@
     toast(`Preset "${preset.name}" — ${applied} field${applied===1?'':'s'} selected`);
   }
 
-  // ── Feature 6: Undo / Revert ──
+  // ── Feature 6: Revert / Undo all ──
+  function anyChangedFields() {
+    return state.chartOrder.some(chartKey => {
+      const entry = state.charts[chartKey];
+      if (!entry || !entry.values) return false;
+      const flat = [];
+      flatten(entry.values, '', flat);
+      return flat.some(f => isChanged(chartKey, f.path, f.val));
+    });
+  }
+
   function updateUndoBtn() {
     const btn = $('undo-btn');
     if (!btn) return;
@@ -669,10 +677,10 @@
         return;
       }
     }
-    if (state.undoStack.length > 0) {
+    if (anyChangedFields()) {
       btn.style.display = '';
-      btn.textContent = '↩ Undo';
-      btn.title = `Undo: ${state.undoStack[state.undoStack.length - 1].label}`;
+      btn.textContent = '↩ Undo all';
+      btn.title = 'Revert all changed fields across all charts to original values';
     } else {
       btn.style.display = 'none';
     }
@@ -727,24 +735,50 @@
     renderValues();
   }
 
-  async function undoLastApply() {
-    if (!state.undoStack.length) return;
-    const frame = state.undoStack.pop();
-    try {
-      const writable = await frame.fileHandle.createWritable();
-      await writable.write(frame.prevContent);
-      await writable.close();
-      const entry = state.charts[frame.chartKey];
-      if (entry) {
-        entry.values = jsyaml.load(frame.prevContent) || {};
-        updateDiffBadge();
+  async function undoAll() {
+    const groups = new Map();
+    for (const chartKey of state.chartOrder) {
+      const entry = state.charts[chartKey];
+      if (!entry || !entry.values || (!entry.rootHandle && !entry.fileHandle)) continue;
+      const flat = [];
+      flatten(entry.values, '', flat);
+      for (const f of flat) {
+        if (!isChanged(chartKey, f.path, f.val)) continue;
+        if (!groups.has(chartKey)) groups.set(chartKey, []);
+        groups.get(chartKey).push(f.path);
       }
-      toast(`Undone: ${frame.label}`);
-      updateUndoBtn();
-      renderValues();
-    } catch (e) {
-      toast('Undo failed: ' + e.message, true);
     }
+    if (!groups.size) { toast('No changed fields to revert', true); return; }
+    let reverted = 0;
+    const errors = [];
+    for (const [chartKey, dotPaths] of groups) {
+      const entry = state.charts[chartKey];
+      try {
+        let fileHandle;
+        if (entry.fileHandle) {
+          fileHandle = entry.fileHandle;
+        } else {
+          const parts = entry.valuesRelPath.split('/');
+          let dir = entry.rootHandle;
+          for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+          fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
+        }
+        const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
+        const origVals = state.originalVals[chartKey] || {};
+        for (const dotPath of dotPaths) {
+          if (dotPath in origVals) { setNestedPath(obj, dotPath, origVals[dotPath]); reverted++; }
+        }
+        const writable = await fileHandle.createWritable();
+        await writable.write(jsyaml.dump(obj, { indent: 2, lineWidth: -1 }));
+        await writable.close();
+        entry.values = obj;
+      } catch (e) { errors.push(`${displayName(chartKey)}: ${e.message}`); }
+    }
+    if (errors.length) toast('Revert errors: ' + errors.join('; '), true);
+    else toast(`Reverted all ${reverted} changed field${reverted === 1 ? '' : 's'} to original`);
+    updateDiffBadge();
+    updateUndoBtn();
+    renderValues();
   }
 
   // ── Count flat keys ──
@@ -1048,6 +1082,11 @@
   }
 
   function renderValues() {
+    // Auto-exit "Changed" mode when no changed fields remain
+    if (state.showChangedOnly && !anyChangedFields()) {
+      state.showChangedOnly = false;
+      $('changed-only-btn').classList.remove('active');
+    }
     const box = $('scrollbox');
     const query = $('search').value.trim();
     $('clear-x').style.display = query ? 'block' : 'none';
@@ -1264,15 +1303,7 @@
           } catch {} // backup failure is non-fatal
         }
 
-        // Feature 6: push undo frame before writing
-        state.undoStack.push({
-          fileHandle,
-          prevContent,
-          chartKey,
-          dotPaths: [...dotPaths],
-          label: `${entry.name} (${dotPaths.length} field${dotPaths.length===1?'':'s'})`,
-        });
-        if (state.undoStack.length > 20) state.undoStack.shift();
+
 
         for (const dotPath of dotPaths) {
           const keys = dotPath.split('.');
@@ -1304,7 +1335,6 @@
     $('new-val').value = '';
     setYamlMode(false);
     updateBatchBar();
-    updateUndoBtn();
     updateDiffBadge();
     renderValues();
   };
@@ -1312,7 +1342,7 @@
   // ── Feature 6: Undo button ──
   $('undo-btn').onclick = () => {
     if (state.selectedVals.size > 0) revertSelectedToOriginal();
-    else undoLastApply();
+    else undoAll();
   };
 
   // ── Feature 3: Changed-only toggle ──
@@ -1386,7 +1416,7 @@
     if (!state.chartOrder.length) return;
     state.charts = {}; state.chartOrder = []; state.selected = null;
     state.selectedVals.clear(); state.originalVals = {};
-    state.undoStack = []; state.backedUpFiles.clear(); state.showChangedOnly = false;
+    state.backedUpFiles.clear(); state.showChangedOnly = false;
     $('changed-only-btn').classList.remove('active');
     try { await dbClear(); } catch {}
     updateBatchBar(); updateDiffBadge(); renderTree(); renderValues();
