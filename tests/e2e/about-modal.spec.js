@@ -6,18 +6,18 @@ test.beforeEach(async ({ page }) => {
 
 test('about button opens modal', async ({ page }) => {
   await page.click('#about-btn');
-  await expect(page.locator('#about-modal')).toBeVisible();
+  await expect(page.locator('#about-modal-overlay')).toBeVisible();
 });
 
 test('about modal shows maintainer info', async ({ page }) => {
   await page.click('#about-btn');
-  await expect(page.locator('#about-modal')).toContainText('Yakir Veneci');
-  await expect(page.locator('#about-modal')).toContainText('seab4ng');
+  await expect(page.locator('#about-modal-overlay')).toContainText('Yakir Veneci');
+  await expect(page.locator('#about-modal-overlay')).toContainText('seab4ng');
 });
 
 test('about modal closes on X click', async ({ page }) => {
   await page.click('#about-btn');
-  await expect(page.locator('#about-modal')).toBeVisible();
+  await expect(page.locator('#about-modal-overlay')).toBeVisible();
   await page.click('#about-close');
-  await expect(page.locator('#about-modal')).toBeHidden();
+  await expect(page.locator('#about-modal-overlay')).toBeHidden();
 });
