@@ -38,7 +38,19 @@
       "Bash(git commit *)",
       "Bash(grep -n \"type:'arr'\\\\|type: 'arr'\\\\|'{}'\\\\\\\\|'\\\\\\\\[\\\\\\\\]'\" C:/Users/Jinxx/Downloads/vier/app/lib.js)",
       "Bash(npm audit *)",
-      "Bash(docker run *)"
+      "Bash(docker run *)",
+      "Bash(git rm *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); ['tests/e2e/diff-badge.spec.js','tests/e2e/changed-filter.spec.js','tests/e2e/presets.spec.js','tests/e2e/revert.spec.js'].forEach\\(f => { try { require\\('./' + f\\); console.log\\('OK:', f\\); } catch\\(e\\) { console.error\\('ERR:', f, e.message\\); } }\\)\")",
+      "Bash(node --check tests/e2e/diff-badge.spec.js)",
+      "Bash(node --check tests/e2e/changed-filter.spec.js)",
+      "Bash(node --check tests/e2e/presets.spec.js)",
+      "Bash(node --check tests/e2e/revert.spec.js)",
+      "Bash(git remote *)",
+      "Bash(GH_TOKEN=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 gh run list --limit 10 --repo seab4ng/helm-values-editor)",
+      "Bash(GH_TOKEN=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 gh run view 25253229557 --repo seab4ng/helm-values-editor --log-failed)",
+      "Bash(GH_TOKEN=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 gh run view 25263822635 --repo seab4ng/helm-values-editor --log-failed)",
+      "Bash(GH_TOKEN=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 gh run view 25264648059 --repo seab4ng/helm-values-editor --log-failed)",
+      "Bash(GH_TOKEN=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 gh run view 25264771360 --repo seab4ng/helm-values-editor --log-failed)"
     ]
   }
 }

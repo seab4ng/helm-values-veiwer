@@ -87,14 +87,18 @@ nodeSelector: {}
 affinity: {}
 `;
 
-  function makeFile(name, content) {
+  function makeFile(name, initialContent) {
+    let content = initialContent;
     return {
       kind: 'file',
       name,
       getFile: async () => ({ name, size: content.length, text: async () => content }),
       createWritable: async () => {
         let buf = '';
-        return { write: async (c) => { buf += c; }, close: async () => {} };
+        return {
+          write: async (c) => { buf += c; },
+          close: async () => { content = buf; },
+        };
       },
       requestPermission: async () => 'granted',
     };

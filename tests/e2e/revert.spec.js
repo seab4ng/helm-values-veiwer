@@ -80,7 +80,7 @@ test('Revert selected updates badge count', async ({ page }) => {
 
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#undo-btn');
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   await expect(page.locator('#diff-badge')).toContainText('1 change');
@@ -110,7 +110,7 @@ test('Undo all hides badge after completion', async ({ page }) => {
   await expect(page.locator('#diff-badge')).toBeVisible();
 
   await page.click('#undo-btn');
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   await expect(page.locator('#diff-badge')).toBeHidden();
@@ -119,7 +119,7 @@ test('Undo all hides badge after completion', async ({ page }) => {
 test('Undo all hides undo button after completion', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
   await page.click('#undo-btn');
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   await expect(page.locator('#undo-btn')).toBeHidden();
@@ -130,7 +130,7 @@ test('Undo all hides Changed button after completion', async ({ page }) => {
   await expect(page.locator('#changed-only-btn')).toBeVisible();
 
   await page.click('#undo-btn');
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   await expect(page.locator('#changed-only-btn')).toBeHidden();
@@ -142,7 +142,7 @@ test('applying same value twice then reverting removes changed class', async ({ 
   await applyChange(page, 'replicaCount', '9');
 
   await page.click('#undo-btn'); // Revert selected (replicaCount still checked)
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   await expect(page.locator('.val-row.changed', { hasText: 'replicaCount' })).toHaveCount(0);

@@ -88,7 +88,7 @@ test('Changed filter auto-exits when all changed fields are reverted', async ({ 
   // Select the only changed field and revert
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#undo-btn'); // Revert selected
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   // Changed mode auto-exits → all rows visible
@@ -106,7 +106,7 @@ test('Changed filter auto-exits after Undo all while in Changed mode', async ({ 
 
   // Undo all while in Changed mode
   await page.click('#undo-btn'); // "Undo all" (no selection)
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   // All rows back, no changed class
@@ -120,7 +120,7 @@ test('Changed button hides after all changes reverted', async ({ page }) => {
 
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#undo-btn'); // Revert selected
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
   await expect(page.locator('#changed-only-btn')).toBeHidden();

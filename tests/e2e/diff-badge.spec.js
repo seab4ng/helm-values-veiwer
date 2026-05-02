@@ -82,7 +82,7 @@ test('badge hides after undoing all changes', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
   await expect(page.locator('#diff-badge')).toBeVisible();
   await page.click('#undo-btn'); // Undo all
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
   await expect(page.locator('#diff-badge')).toBeHidden();
 });
@@ -95,7 +95,7 @@ test('badge updates after reverting one of two changed fields', async ({ page })
   // Revert only replicaCount
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#undo-btn'); // Revert selected
-  await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
   await expect(page.locator('#diff-badge')).toContainText('1 change');
 });
