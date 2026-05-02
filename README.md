@@ -64,8 +64,8 @@ docker run -p 8080:8080 -e APP_VERSION="2.1.0" sokushinbutsu/helm-values-editor:
 ## Build from source
 
 ```bash
-git clone https://github.com/seab4ng/helm-values-veiwer.git
-cd helm-values-veiwer
+git clone https://github.com/seab4ng/helm-values-editor.git
+cd helm-values-editor
 docker build -t helm-values-editor .
 docker run -p 8080:8080 helm-values-editor
 ```
