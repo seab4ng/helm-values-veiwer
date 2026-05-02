@@ -1,6 +1,8 @@
 node_modules/
 .claude/worktrees/
 .claude/settings.local.json
+.claude/*
+.claude
 app/vendor/
 playwright-report/
 test-results/
