@@ -5,7 +5,7 @@ async function applyChange(page, fieldText, value) {
   await page.locator('.val-row', { hasText: fieldText }).locator('input[type=checkbox]').check();
   await page.fill('#new-val', value);
   await page.click('#apply-btn');
-  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' })).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
 }
 
 test.beforeEach(async ({ page }) => {
