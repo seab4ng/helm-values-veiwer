@@ -969,11 +969,12 @@
     if (valuesText) {
       try { values = jsyaml.load(valuesText) || {}; } catch (e) { values = {}; }
     }
-    return {name, version, description, rootHandle, valuesRelPath, values, subchartEntries};
+    return {name, dirName: dirHandle.name, version, description, rootHandle, valuesRelPath, values, subchartEntries};
   }
 
   function registerEntry(entry, parentKey, rootKey) {
-    const key = parentKey === null ? entry.name : (rootKey + '|' + entry.name);
+    const keySegment = entry.dirName || entry.name;
+    const key = parentKey === null ? keySegment : (rootKey + '|' + keySegment);
     const chartEntry = {
       key, name: entry.name, version: entry.version, description: entry.description,
       rootHandle: entry.rootHandle, valuesRelPath: entry.valuesRelPath,
