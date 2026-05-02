@@ -1,7 +1,7 @@
 'use strict';
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue} = require('../app/lib.js');
+const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged} = require('../app/lib.js');
 
 // ─────────────────────────────────────────────
 // flatten
@@ -451,4 +451,105 @@ describe('buildChartTree: additional cases', () => {
     assert.ok(subKey, 'a subchart entry should exist');
     assert.equal(displayName(subKey), 'mysubdir');
   });
+});
+
+// ─────────────────────────────────────────────
+// getNestedVal
+// ─────────────────────────────────────────────
+
+test('getNestedVal: top-level key exists returns value', () => {
+  const obj = {port: 8080};
+  assert.equal(getNestedVal(obj, 'port'), 8080);
+});
+
+test('getNestedVal: nested key two levels returns value', () => {
+  const obj = {service: {port: 3000}};
+  assert.equal(getNestedVal(obj, 'service.port'), 3000);
+});
+
+test('getNestedVal: deeply nested three levels returns value', () => {
+  const obj = {a: {b: {c: 'deep'}}};
+  assert.equal(getNestedVal(obj, 'a.b.c'), 'deep');
+});
+
+test('getNestedVal: non-existent key returns undefined', () => {
+  const obj = {a: 1};
+  assert.equal(getNestedVal(obj, 'z'), undefined);
+});
+
+test('getNestedVal: path through null returns undefined', () => {
+  const obj = {a: null};
+  assert.equal(getNestedVal(obj, 'a.b'), undefined);
+});
+
+test('getNestedVal: path through a string (non-object) returns undefined', () => {
+  const obj = {a: 'hello'};
+  assert.equal(getNestedVal(obj, 'a.b'), undefined);
+});
+
+test('getNestedVal: single key on empty object returns undefined', () => {
+  assert.equal(getNestedVal({}, 'missing'), undefined);
+});
+
+test('getNestedVal: array value at path returns the array', () => {
+  const arr = [1, 2, 3];
+  const obj = {items: arr};
+  assert.deepEqual(getNestedVal(obj, 'items'), arr);
+});
+
+test('getNestedVal: explicit undefined value at key returns undefined', () => {
+  const obj = {a: undefined};
+  assert.equal(getNestedVal(obj, 'a'), undefined);
+});
+
+test('getNestedVal: number value at path returns number', () => {
+  const obj = {metrics: {count: 42}};
+  assert.equal(getNestedVal(obj, 'metrics.count'), 42);
+});
+
+// ─────────────────────────────────────────────
+// valChanged
+// ─────────────────────────────────────────────
+
+test('valChanged: same string returns false', () => {
+  assert.equal(valChanged('hello', 'hello'), false);
+});
+
+test('valChanged: different string returns true', () => {
+  assert.equal(valChanged('hello', 'world'), true);
+});
+
+test('valChanged: same number returns false', () => {
+  assert.equal(valChanged(42, 42), false);
+});
+
+test('valChanged: number vs string of that number returns false', () => {
+  // String(42) === "42" and String("42") === "42"
+  assert.equal(valChanged(42, '42'), false);
+});
+
+test('valChanged: null vs null returns false', () => {
+  assert.equal(valChanged(null, null), false);
+});
+
+test('valChanged: null vs string "null" returns false', () => {
+  // null maps to "null", String("null") === "null"
+  assert.equal(valChanged(null, 'null'), false);
+});
+
+test('valChanged: null vs some other value returns true', () => {
+  assert.equal(valChanged(null, 'something'), true);
+});
+
+test('valChanged: true vs true returns false', () => {
+  assert.equal(valChanged(true, true), false);
+});
+
+test('valChanged: true vs false returns true', () => {
+  assert.equal(valChanged(true, false), true);
+});
+
+test('valChanged: undefined vs undefined returns false', () => {
+  // undefined === null is false, so String(undefined) = "undefined" for both sides
+  assert.equal(valChanged(undefined, undefined), false);
 });

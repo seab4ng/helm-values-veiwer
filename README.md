@@ -13,6 +13,11 @@ A browser-based editor for Helm chart values files. Load a chart folder or stand
 - Changes write back to the actual files on disk (File System Access API)
 - Session persistence — reopen the browser and restore your loaded charts
 - Fully airgapped — no external network calls at runtime
+- **Session changes badge**: An amber "N changes" badge appears in the values panel header when fields differ from their original load-time values. Click it to open a before/after diff table grouped by chart.
+- **Changed field highlight + filter**: Changed fields show an amber left border. Click **Changed** to filter and show only changed fields; the filter auto-exits when no changed fields remain.
+- **Presets**: Click **Presets** to open the preset manager. Save the current field selection (with an optional prefilled value) as a named preset and apply it across all loaded charts. Click the magnifying-glass button on a preset to inspect which fields it contains.
+- **Revert selected / Undo all**: Select any changed fields and click **↩ Revert selected** to restore only those fields to their original load-time values. With nothing selected, **↩ Undo all** appears and reverts every changed field across every loaded chart simultaneously.
+- **Auto-backup (.bak)**: Before the first write to any values.yaml the app creates a `values.bak` file in the same directory. Existing `.bak` files are detected on chart load. Click **Clean backups** in the left panel to delete all `.bak` files created or detected this session.
 
 ## Requirements
 
@@ -36,7 +41,12 @@ Open http://localhost:8080 in Chrome or Edge.
 5. Type a new value and click **Apply to selected fields**.
    - For string, number, or boolean fields: type the value directly.
    - For list or map fields: click **YAML** to switch to YAML input mode (e.g. `[80, 443]` or `key: value`).
-6. Changes are written back to the files on disk immediately.
+6. Changes are written back to the files on disk immediately. A `.bak` file is created automatically alongside the first write to each values.yaml.
+7. An amber **N changes** badge appears in the values panel header. Click it to review a full before/after diff table grouped by chart.
+8. Changed fields are highlighted with an amber left border. Click **Changed** to filter the list to only those fields.
+9. To revert: check the fields you want to restore and click **↩ Revert selected**. With nothing checked, click **↩ Undo all** to revert every changed field across all loaded charts at once.
+10. Click **Presets** to save the current field selection as a named preset (with an optional default value). Apply saved presets to all loaded charts in one click.
+11. Click **Clean backups** in the left panel to delete all `.bak` files created or detected this session.
 
 > Note: mixing field types (strings, lists, maps) in the same batch is not allowed. Select one type at a time.
 
@@ -54,8 +64,8 @@ docker run -p 8080:8080 -e APP_VERSION="2.1.0" sokushinbutsu/helm-values-editor:
 ## Build from source
 
 ```bash
-git clone https://github.com/seab4ng/helm-values-veiwer.git
-cd helm-values-veiwer
+git clone https://github.com/seab4ng/helm-values-editor.git
+cd helm-values-editor
 docker build -t helm-values-editor .
 docker run -p 8080:8080 helm-values-editor
 ```

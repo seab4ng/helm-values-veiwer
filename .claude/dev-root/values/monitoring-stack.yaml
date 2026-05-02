@@ -1,5 +1,0 @@
-global:
-  scrapeInterval: 30s
-  evaluationInterval: 30s
-  retention: 15d
-namespace: monitoring

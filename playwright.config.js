@@ -8,6 +8,7 @@ module.exports = defineConfig({
     ['github'],
     ['junit', { outputFile: 'e2e-results.xml' }],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'playwright-report.json' }],
   ],
   use: {
     baseURL: 'http://localhost:3000',

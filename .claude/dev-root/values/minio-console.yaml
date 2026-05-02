@@ -1,9 +1,0 @@
-replicas: 2
-image:
-  repository: quay.io/minio/console
-  tag: v0.43.0
-service:
-  port: 9090
-  type: ClusterIP
-ingress:
-  enabled: false
