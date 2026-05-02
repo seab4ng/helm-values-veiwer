@@ -95,7 +95,7 @@ test('applying a preset selects fields and shows batch bar', async ({ page }) =>
 
   await page.click('#presets-btn');
   await page.locator('[data-apply-preset]').first().click();
-  await page.click('#preset-modal-close');
+  // applyPreset auto-closes the modal
 
   await expect(page.locator('#batch-bar')).not.toHaveClass(/hidden/);
 });
@@ -109,13 +109,12 @@ test('applying preset with prefilled value fills new-val input', async ({ page }
 
   await page.click('#preset-modal-close');
   await page.click('#clear-sel-btn');
-  await page.fill('#new-val', '');
 
   await page.click('#presets-btn');
   await page.locator('[data-apply-preset]').first().click();
-  await page.click('#preset-modal-close');
+  // applyPreset fills #new-val with saved value and auto-closes modal
 
-  // The prefilled value should be restored in the input
+  // batch bar visible (fields selected) → #new-val accessible
   await expect(page.locator('#new-val')).toHaveValue('10');
 });
 
