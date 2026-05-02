@@ -28,7 +28,6 @@
   .main{display:grid;grid-template-columns:380px minmax(0,1fr);gap:16px;align-items:start;}
   @media(max-width:768px){.main{grid-template-columns:1fr;}}
 
-  /* Left panel */
   .tree-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
   .tree-panel-hdr{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid var(--border);background:var(--bg3);}
   .tree-search{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--bg2);}
@@ -52,12 +51,7 @@
   .tree-ver{font-size:11px;color:var(--text3);font-family:var(--mono);}
   .tree-count{font-size:10px;padding:1px 7px;border-radius:20px;background:var(--bg4);color:var(--text2);flex-shrink:0;}
 
-  .tree-del{
-    flex-shrink:0;width:20px;height:20px;border-radius:4px;
-    display:flex;align-items:center;justify-content:center;
-    font-size:13px;color:var(--text3);cursor:pointer;
-    transition:all 0.15s;opacity:0;
-  }
+  .tree-del{flex-shrink:0;width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text3);cursor:pointer;transition:all 0.15s;opacity:0;}
   .tree-node:hover .tree-del{opacity:1;}
   .tree-del:hover{background:#3d1416;color:var(--red);}
 
@@ -66,20 +60,13 @@
   .tree-action-row .btn{flex:1;text-align:center;font-size:11px;padding:5px 8px;}
   .tree-action-hint{font-size:10px;color:var(--text3);text-align:center;}
 
-  /* Right panel */
   .values-panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;display:flex;flex-direction:column;}
   .values-hdr{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--bg3);}
-  .values-hdr-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
-  .values-chart-name{font-size:15px;font-weight:600;}
+  .values-hdr-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .values-chart-name{font-size:15px;font-weight:600;flex:1;}
   .values-chart-desc{font-size:12px;color:var(--text3);margin-bottom:10px;}
   .search-wrap{position:relative;}
-  .search-wrap input{
-    width:100%;padding:8px 12px 8px 34px;
-    font-family:var(--font);font-size:13px;
-    border-radius:var(--radius);border:1px solid var(--border);
-    background:var(--bg);color:var(--text);outline:none;
-    transition:border-color 0.15s;
-  }
+  .search-wrap input{width:100%;padding:8px 12px 8px 34px;font-family:var(--font);font-size:13px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.15s;}
   .search-wrap input:focus{border-color:var(--accent);}
   .search-wrap input::placeholder{color:var(--text3);}
   .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none;}
@@ -94,28 +81,13 @@
   .scrollbox::-webkit-scrollbar-track{background:transparent;}
   .scrollbox::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
-  /* Value rows with checkboxes */
-  .val-row{
-    display:flex;align-items:baseline;gap:8px;padding:3px 16px;
-    font-family:var(--mono);font-size:13px;line-height:1.7;
-    transition:background 0.1s;cursor:pointer;
-    user-select:none;
-  }
+  .val-row{display:flex;align-items:baseline;gap:8px;padding:3px 16px;font-family:var(--mono);font-size:13px;line-height:1.7;transition:background 0.1s;cursor:pointer;user-select:none;position:relative;border-left:3px solid transparent;}
   .val-row:hover{background:var(--bg3);}
   .val-row.checked{background:var(--accent-dim);}
-  .val-cb{
-    flex-shrink:0;appearance:none;-webkit-appearance:none;
-    width:14px;height:14px;border:1px solid var(--border);
-    border-radius:3px;background:var(--bg3);cursor:pointer;
-    position:relative;top:2px;transition:all 0.1s;
-    align-self:center;
-  }
+  .val-row.changed{border-left-color:var(--amber);}
+  .val-cb{flex-shrink:0;appearance:none;-webkit-appearance:none;width:14px;height:14px;border:1px solid var(--border);border-radius:3px;background:var(--bg3);cursor:pointer;position:relative;top:2px;transition:all 0.1s;align-self:center;}
   .val-cb:checked{background:var(--accent);border-color:var(--accent);}
-  .val-cb:checked::after{
-    content:'';position:absolute;left:3px;top:0px;
-    width:5px;height:8px;border:2px solid var(--bg);
-    border-top:none;border-left:none;transform:rotate(45deg);
-  }
+  .val-cb:checked::after{content:'';position:absolute;left:3px;top:0px;width:5px;height:8px;border:2px solid var(--bg);border-top:none;border-left:none;transform:rotate(45deg);}
   .val-path{color:var(--text2);word-break:break-all;}
   .val-sep{color:var(--text3);flex-shrink:0;margin:0 2px;}
   .val-val{word-break:break-all;}
@@ -128,57 +100,84 @@
   .empty{color:var(--text2);font-size:14px;text-align:center;padding:3rem 1rem;}
   .empty span{display:block;font-size:28px;margin-bottom:6px;opacity:0.4;}
 
-  .btn{
-    font-family:var(--font);font-size:12px;font-weight:500;
-    padding:6px 14px;border-radius:var(--radius);
-    border:1px solid var(--border);background:var(--bg2);color:var(--text);
-    cursor:pointer;transition:all 0.15s;
+  /* Copy-to-all hover button */
+  .val-copy-btn{
+    display:none;flex-shrink:0;margin-left:auto;
+    font-size:10px;padding:1px 6px;border-radius:4px;
+    background:var(--bg4);border:1px solid var(--border);color:var(--text3);
+    cursor:pointer;font-family:var(--font);white-space:nowrap;
+    transition:all 0.1s;
   }
+  .val-row:hover .val-copy-btn{display:inline-flex;}
+  .val-copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  .btn{font-family:var(--font);font-size:12px;font-weight:500;padding:6px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;transition:all 0.15s;}
   .btn:hover{border-color:var(--accent);color:var(--accent);}
   .btn-primary{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);}
   .btn-primary:hover{background:var(--accent);color:var(--bg);}
   .btn-danger{background:#3d1416;border-color:#5a2020;color:var(--red);}
   .btn-danger:hover{background:var(--red);color:var(--bg);}
+  .btn-amber{background:#2d1f00;border-color:#5a3f00;color:var(--amber);}
+  .btn-amber:hover{background:var(--amber);color:var(--bg);}
+  .btn-amber.active{background:var(--amber);color:var(--bg);}
 
-  /* Batch edit bar */
-  #batch-bar{
-    padding:10px 16px;
-    background:var(--bg3);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  /* Diff badge */
+  .diff-badge{
+    font-size:11px;padding:2px 9px;border-radius:20px;
+    background:var(--amber);color:#0e1117;font-weight:700;
+    cursor:pointer;flex-shrink:0;
+    transition:opacity 0.15s;
   }
+  .diff-badge:hover{opacity:0.8;}
+
+  #batch-bar{padding:10px 16px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   #batch-bar.hidden{display:none;}
   #sel-count{font-size:12px;color:var(--text2);flex-shrink:0;white-space:nowrap;}
-  #new-val{
-    flex:1;min-width:140px;
-    font-family:var(--font);font-size:13px;padding:5px 10px;
-    border-radius:var(--radius);border:1px solid var(--border);
-    background:var(--bg);color:var(--text);outline:none;
-    transition:border-color 0.15s;
-  }
+  #new-val{flex:1;min-width:140px;font-family:var(--font);font-size:13px;padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.15s;}
   #new-val:focus{border-color:var(--accent);}
   #new-val::placeholder{color:var(--text3);}
 
-  .toast-area{position:fixed;top:16px;right:16px;z-index:100;}
-  .toast{
-    font-size:12px;padding:8px 14px;border-radius:var(--radius);margin-bottom:6px;
-    background:var(--green-dim);color:var(--green);border:1px solid #2a5a3a;
-    animation:toastIn 0.2s ease-out,fadeOut 3s 1s ease-in forwards;
-  }
+  .toast-area{position:fixed;top:16px;right:16px;z-index:300;}
+  .toast{font-size:12px;padding:8px 14px;border-radius:var(--radius);margin-bottom:6px;background:var(--green-dim);color:var(--green);border:1px solid #2a5a3a;animation:toastIn 0.2s ease-out,fadeOut 3s 1s ease-in forwards;}
   .toast.err{background:#3d1416;color:var(--red);border-color:#5a2020;animation:toastIn 0.2s ease-out;}
   @keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
   @keyframes fadeOut{0%,60%{opacity:1;}100%{opacity:0;}}
 
-  .warn-bar{
-    padding:8px 16px;background:#2d1f00;border-bottom:1px solid #5a3f00;
-    font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px;
-  }
+  .warn-bar{padding:8px 16px;background:#2d1f00;border-bottom:1px solid #5a3f00;font-size:12px;color:var(--amber);display:flex;align-items:center;gap:8px;}
   .warn-bar.hidden{display:none;}
 
-  .session-banner{
-    padding:8px 16px;background:var(--purple-dim);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);flex-wrap:wrap;
-  }
+  .session-banner{padding:8px 16px;background:var(--purple-dim);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);flex-wrap:wrap;}
   .session-banner.hidden{display:none;}
+
+  /* Generic large modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal-overlay.hidden{display:none;}
+  .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:720px;max-height:80vh;display:flex;flex-direction:column;gap:16px;box-shadow:0 8px 40px rgba(0,0,0,0.6);}
+  .modal-box.wide{max-width:860px;}
+  .modal-hdr{display:flex;align-items:center;gap:10px;}
+  .modal-hdr h2{font-size:16px;font-weight:600;flex:1;}
+  .modal-close{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1;padding:2px 6px;border-radius:4px;}
+  .modal-close:hover{background:var(--bg3);color:var(--text);}
+  .modal-body{overflow-y:auto;flex:1;}
+
+  /* Diff modal */
+  .diff-file-hdr{font-size:12px;font-weight:600;color:var(--text2);padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+  .diff-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--bg3);font-size:12px;font-family:var(--mono);}
+  .diff-row-hdr{font-weight:600;color:var(--text3);font-size:11px;}
+  .diff-path{color:var(--text2);}
+  .diff-old{color:var(--red);text-decoration:line-through;opacity:0.8;}
+  .diff-new{color:var(--green);}
+  .diff-empty{color:var(--text3);font-style:italic;text-align:center;padding:2rem;}
+
+  /* Preset modal */
+  .preset-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .preset-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);}
+  .preset-name{flex:1;font-size:13px;font-weight:500;}
+  .preset-meta{font-size:11px;color:var(--text3);}
+  .preset-empty{color:var(--text3);font-size:13px;padding:12px 0;}
+  .preset-save-row{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);}
+  .preset-save-row input{flex:1;font-family:var(--font);font-size:13px;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;}
+  .preset-save-row input:focus{border-color:var(--accent);}
 
   .about-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:center;justify-content:center;}
   .about-modal-overlay.hidden{display:none;}
@@ -210,6 +209,7 @@
     <button class="btn" id="about-btn" style="flex-shrink:0;">About</button>
   </div>
 
+  <!-- About modal -->
   <div id="about-modal-overlay" class="about-modal-overlay hidden">
     <div class="about-modal">
       <button class="about-close" id="about-close">&times;</button>
@@ -218,6 +218,28 @@
       <div class="about-row"><span class="about-lbl">Maintainer</span><span class="about-val">Yakir Veneci</span></div>
       <div class="about-row"><span class="about-lbl">GitHub</span><a class="about-link" href="https://github.com/seab4ng" target="_blank" rel="noopener">seab4ng</a></div>
       <div class="about-row"><span class="about-lbl">Version</span><span class="about-val" style="font-family:var(--mono);font-size:12px;">__APP_VERSION__</span></div>
+    </div>
+  </div>
+
+  <!-- Diff modal -->
+  <div id="diff-modal-overlay" class="modal-overlay hidden">
+    <div class="modal-box wide">
+      <div class="modal-hdr">
+        <h2>Session Changes</h2>
+        <button class="modal-close" id="diff-modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="diff-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Preset modal -->
+  <div id="preset-modal-overlay" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <h2>Presets</h2>
+        <button class="modal-close" id="preset-modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="preset-modal-body"></div>
     </div>
   </div>
 
@@ -236,6 +258,7 @@
         </div>
         <div class="tree-action-row">
           <button class="btn btn-danger" id="clear-all-btn" style="flex:1;text-align:center;font-size:11px;padding:5px 8px;">Clear all</button>
+          <button class="btn" id="clean-backups-btn" style="flex:1;text-align:center;font-size:11px;padding:5px 8px;" title="Delete all .bak files created this session">Clean backups</button>
         </div>
         <div class="tree-action-hint">Chart folder = full tree &nbsp;|&nbsp; YAML file = single file &nbsp;·&nbsp; both support write-back</div>
       </div>
@@ -260,6 +283,12 @@
       <div class="values-hdr" id="values-hdr">
         <div class="values-hdr-top">
           <span class="values-chart-name" id="val-name">Select a chart</span>
+          <!-- Feature 2: diff badge -->
+          <span id="diff-badge" class="diff-badge" style="display:none;" title="View session changes">0 changes</span>
+          <!-- Feature 3: changed-only toggle -->
+          <button class="btn btn-amber" id="changed-only-btn" style="font-size:11px;padding:4px 10px;display:none;" title="Show only fields changed this session">Changed</button>
+          <!-- Feature 5: presets -->
+          <button class="btn" id="presets-btn" style="font-size:11px;padding:4px 10px;">Presets</button>
         </div>
         <div class="values-chart-desc" id="val-desc"></div>
         <div class="search-wrap">
@@ -275,6 +304,8 @@
         <input id="new-val" type="text" placeholder="New value (string, number, true/false)..." style="flex:1;min-width:120px;" />
         <textarea id="yaml-val" placeholder="YAML value (e.g. [80, 443] or&#10;key: value)" style="display:none;flex:1;min-width:180px;min-height:72px;resize:vertical;font-family:var(--mono);font-size:12px;padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.15s;" spellcheck="false"></textarea>
         <button class="btn btn-primary" id="apply-btn">Apply to selected fields</button>
+        <!-- Feature 6: undo -->
+        <button class="btn" id="undo-btn" style="display:none;" title="Undo last apply">&#8617; Undo</button>
         <button class="btn btn-danger" id="clear-sel-btn">Clear selection</button>
       </div>
       <div class="scrollbox" id="scrollbox"></div>
@@ -306,6 +337,16 @@
     if (typeof original === 'boolean') { if (str === 'true') return true; if (str === 'false') return false; return str; }
     if (original === null && str === 'null') return null;
     return str;
+  }
+
+  function getNestedVal(obj, dotPath) {
+    const keys = dotPath.split('.');
+    let cur = obj;
+    for (const k of keys) {
+      if (cur == null || typeof cur !== 'object') return undefined;
+      cur = cur[k];
+    }
+    return cur;
   }
 
   // ── IndexedDB session persistence ──
@@ -376,6 +417,7 @@
           if (state.charts[key]) { restored++; continue; }
           state.charts[key] = {key, name, version:'', description:'', rootHandle:null, fileHandle:row.handle, valuesRelPath:file.name, values, subcharts:[], parentKey:null};
           state.chartOrder.push(key);
+          snapshotOriginal(key, values);
           state.selected = key;
           restored++;
         }
@@ -396,23 +438,227 @@
     chartOrder: [],
     selected: null,
     selectedVals: new Set(),
+    // Feature 2: session diffs
+    sessionDiffs: [],       // [{chartKey, dotPath, oldVal, newVal, chartName}]
+    // Feature 3: original values snapshot
+    originalVals: {},       // {chartKey: {dotPath: serializedOrigVal}}
+    showChangedOnly: false,
+    // Feature 6: undo stack
+    undoStack: [],          // [{fileHandle, prevContent, chartKey, dotPaths, label}]
+    // Feature 7: backed up files
+    backedUpFiles: new Set(), // "chartKey::relPath"
   };
 
   const $ = id => document.getElementById(id);
 
-  // ── File System Access API support check ──
   const hasFSAPI = typeof window.showDirectoryPicker === 'function' && typeof window.showOpenFilePicker === 'function';
-  if (!hasFSAPI) {
-    $('fsapi-warn').classList.remove('hidden');
-  }
+  if (!hasFSAPI) $('fsapi-warn').classList.remove('hidden');
 
-  // ── Toast ──
   function toast(msg, err) {
     const el = document.createElement('div');
     el.className = 'toast' + (err ? ' err' : '');
     el.textContent = msg;
     $('toast-area').appendChild(el);
     setTimeout(() => el.remove(), err ? 6000 : 4200);
+  }
+
+  // ── Feature 3: Original value snapshot ──
+  function snapshotOriginal(chartKey, values) {
+    if (!values) return;
+    const flat = [];
+    flatten(values, '', flat);
+    if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
+    for (const f of flat) {
+      state.originalVals[chartKey][f.path] = String(f.val);
+    }
+  }
+
+  function isChanged(chartKey, dotPath, currentVal) {
+    const orig = state.originalVals[chartKey];
+    if (!orig || !(dotPath in orig)) return false;
+    return orig[dotPath] !== String(currentVal === null ? 'null' : currentVal);
+  }
+
+  // ── Feature 2: Diff tracking ──
+  function recordDiff(chartKey, chartName, dotPath, oldVal, newVal) {
+    state.sessionDiffs.push({chartKey, chartName, dotPath, oldVal: String(oldVal ?? ''), newVal: String(newVal ?? '')});
+    updateDiffBadge();
+  }
+
+  function updateDiffBadge() {
+    const badge = $('diff-badge');
+    const changedBtn = $('changed-only-btn');
+    const n = state.sessionDiffs.length;
+    if (n === 0) {
+      badge.style.display = 'none';
+      changedBtn.style.display = 'none';
+    } else {
+      badge.style.display = '';
+      badge.textContent = `${n} change${n===1?'':'s'}`;
+      changedBtn.style.display = '';
+    }
+  }
+
+  function showDiffModal() {
+    const body = $('diff-modal-body');
+    if (!state.sessionDiffs.length) {
+      body.innerHTML = '<div class="diff-empty">No changes made this session yet.</div>';
+    } else {
+      // Group by chart
+      const byChart = new Map();
+      for (const d of state.sessionDiffs) {
+        if (!byChart.has(d.chartKey)) byChart.set(d.chartKey, {name: d.chartName, diffs: []});
+        byChart.get(d.chartKey).diffs.push(d);
+      }
+      let html = '';
+      for (const [, grp] of byChart) {
+        html += `<div class="diff-file-hdr">${esc(grp.name)}</div>`;
+        html += `<div class="diff-row diff-row-hdr"><span>Field</span><span>Before</span><span>After</span></div>`;
+        for (const d of grp.diffs) {
+          html += `<div class="diff-row">
+            <span class="diff-path">${esc(d.dotPath)}</span>
+            <span class="diff-old">${esc(d.oldVal)}</span>
+            <span class="diff-new">${esc(d.newVal)}</span>
+          </div>`;
+        }
+      }
+      body.innerHTML = html;
+    }
+    $('diff-modal-overlay').classList.remove('hidden');
+  }
+
+  // ── Feature 5: Presets (localStorage) ──
+  const PRESETS_KEY = 'helm-editor-presets';
+
+  function loadPresets() {
+    try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]'); } catch { return []; }
+  }
+
+  function savePresets(presets) {
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+  }
+
+  function showPresetModal() {
+    renderPresetModal();
+    $('preset-modal-overlay').classList.remove('hidden');
+  }
+
+  function renderPresetModal() {
+    const presets = loadPresets();
+    let html = '';
+    if (!presets.length) {
+      html += '<div class="preset-empty">No presets saved yet. Select fields and save a preset below.</div>';
+    } else {
+      html += '<div class="preset-list">';
+      for (const p of presets) {
+        html += `<div class="preset-item">
+          <span class="preset-name">${esc(p.name)}</span>
+          <span class="preset-meta">${p.entries.length} field${p.entries.length===1?'':'s'}</span>
+          <button class="btn btn-primary" style="font-size:11px;padding:3px 10px;" data-apply-preset="${esc(p.id)}">Apply</button>
+          <button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" data-del-preset="${esc(p.id)}">&times;</button>
+        </div>`;
+      }
+      html += '</div>';
+    }
+
+    const selCount = state.selectedVals.size;
+    const newVal = $('new-val').value.trim();
+    html += `<div class="preset-save-row">
+      <input type="text" id="preset-name-input" placeholder="Preset name (e.g. Production, Staging)..." />
+      <button class="btn btn-primary" id="preset-save-btn" ${selCount===0?'disabled title="Select fields first"':''}>
+        Save (${selCount} field${selCount===1?'':'s'})
+      </button>
+    </div>`;
+    if (selCount > 0 && !newVal) {
+      html += `<div style="font-size:11px;color:var(--amber);margin-top:4px;">Tip: fill in a value before saving to include it in the preset.</div>`;
+    }
+    $('preset-modal-body').innerHTML = html;
+
+    // Apply preset buttons
+    $('preset-modal-body').querySelectorAll('[data-apply-preset]').forEach(btn => {
+      btn.onclick = () => applyPreset(btn.dataset.applyPreset);
+    });
+    // Delete preset buttons
+    $('preset-modal-body').querySelectorAll('[data-del-preset]').forEach(btn => {
+      btn.onclick = () => {
+        const presets = loadPresets().filter(p => p.id !== btn.dataset.delPreset);
+        savePresets(presets);
+        renderPresetModal();
+        toast('Preset deleted');
+      };
+    });
+    // Save preset button
+    const saveBtn = $('preset-save-btn');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        const name = $('preset-name-input').value.trim();
+        if (!name) { toast('Enter a preset name', true); return; }
+        const value = $('new-val').value.trim();
+        const entries = [...state.selectedVals].map(svKey => {
+          const sep = svKey.indexOf('::');
+          return {chartKey: svKey.slice(0, sep), dotPath: svKey.slice(sep + 2), value};
+        });
+        const preset = {id: Date.now().toString(36), name, entries};
+        const presets = loadPresets();
+        presets.push(preset);
+        savePresets(presets);
+        renderPresetModal();
+        toast(`Preset "${name}" saved`);
+      };
+    }
+  }
+
+  function applyPreset(presetId) {
+    const preset = loadPresets().find(p => p.id === presetId);
+    if (!preset) return;
+    let applied = 0;
+    for (const entry of preset.entries) {
+      for (const chartKey of state.chartOrder) {
+        const chart = state.charts[chartKey];
+        if (!chart || !chart.values) continue;
+        const val = getNestedVal(chart.values, entry.dotPath);
+        if (val === undefined) continue;
+        state.selectedVals.add(chartKey + '::' + entry.dotPath);
+        applied++;
+      }
+    }
+    if (preset.entries[0]?.value) $('new-val').value = preset.entries[0].value;
+    $('preset-modal-overlay').classList.add('hidden');
+    updateBatchBar();
+    renderValues();
+    toast(`Preset "${preset.name}" — ${applied} field${applied===1?'':'s'} selected`);
+  }
+
+  // ── Feature 6: Undo ──
+  function updateUndoBtn() {
+    const btn = $('undo-btn');
+    if (!btn) return;
+    if (state.undoStack.length === 0) {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = '';
+      btn.title = `Undo: ${state.undoStack[state.undoStack.length-1].label}`;
+    }
+  }
+
+  async function undoLastApply() {
+    if (!state.undoStack.length) return;
+    const frame = state.undoStack.pop();
+    try {
+      const writable = await frame.fileHandle.createWritable();
+      await writable.write(frame.prevContent);
+      await writable.close();
+      // Re-parse in-memory
+      const entry = state.charts[frame.chartKey];
+      if (entry) {
+        entry.values = jsyaml.load(frame.prevContent) || {};
+      }
+      toast(`Undone: ${frame.label}`);
+      updateUndoBtn();
+      renderValues();
+    } catch (e) {
+      toast('Undo failed: ' + e.message, true);
+    }
   }
 
   // ── Count flat keys ──
@@ -424,7 +670,6 @@
     return flat.length;
   }
 
-  // ── Tree search helpers ──
   function treeNorm(s) { return String(s).toLowerCase().replace(/[-_\s]/g, ''); }
 
   function nodeMatchesQuery(key, q) {
@@ -443,7 +688,6 @@
     return !!(entry && (entry.subcharts || []).some(sk => subtreeMatchesQuery(sk, q)));
   }
 
-  // ── Render tree ──
   function renderTree() {
     const el = $('tree');
     const q = $('tree-search').value.trim();
@@ -457,7 +701,6 @@
     const hasCharts = state.chartOrder.length > 0;
     let html = '';
 
-    // "All charts" node - always present, grayed when nothing loaded
     html += `<div class="tree-node${state.selected === 'all' ? ' active' : ''}${!hasCharts ? ' disabled' : ''}" data-name="all">
       <span class="tree-dot" style="background:var(--cyan);"></span>
       <span class="tree-name">All charts</span>
@@ -465,26 +708,20 @@
     </div>`;
 
     if (!hasCharts) {
-      html += `<div class="empty" style="padding:2rem 1rem;">
-        <span>&#9096;</span>
-        Add a chart folder or YAML file to get started
-      </div>`;
+      html += `<div class="empty" style="padding:2rem 1rem;"><span>&#9096;</span>Add a chart folder or YAML file to get started</div>`;
       el.innerHTML = html;
       attachTreeEvents(el);
       return;
     }
 
     const rendered = new Set();
-
     for (const rootKey of rootKeys) {
       if (!subtreeMatchesQuery(rootKey, q)) continue;
       html += renderTreeNode(rootKey, 0, rendered, q);
     }
-
     if (q && rootKeys.every(k => !subtreeMatchesQuery(k, q))) {
       html += '<div style="padding:12px 16px;font-size:12px;color:var(--text3);">No charts match</div>';
     }
-
     el.innerHTML = html;
     attachTreeEvents(el);
     queueSync();
@@ -494,13 +731,11 @@
     const entry = state.charts[key];
     if (!entry || rendered.has(key)) return '';
     rendered.add(key);
-
     const isRoot = depth === 0;
     const selfMatches = nodeMatchesQuery(key, q);
     const childQ = selfMatches ? '' : q;
     const subkeys = entry.subcharts || [];
     const isWritable = !!(entry.rootHandle || entry.fileHandle);
-
     let html = `<div class="tree-node${state.selected === key ? ' active' : ''}" data-name="${esc(key)}">`;
     for (let i = 0; i < depth; i++) html += `<span class="tree-indent" style="width:12px;"></span>`;
     if (depth > 0) html += `<span class="tree-line">&#9492;</span>`;
@@ -511,11 +746,8 @@
     html += `<span class="tree-count">${countKeys(key)}</span>`;
     html += `<span class="tree-del" data-del="${esc(key)}" title="Remove">&times;</span>`;
     html += `</div>`;
-
     for (const sk of subkeys) {
-      if (!childQ || subtreeMatchesQuery(sk, childQ)) {
-        html += renderTreeNode(sk, depth + 1, rendered, childQ);
-      }
+      if (!childQ || subtreeMatchesQuery(sk, childQ)) html += renderTreeNode(sk, depth + 1, rendered, childQ);
     }
     return html;
   }
@@ -540,12 +772,10 @@
   function removeChart(key) {
     const entry = state.charts[key];
     if (!entry) return;
-    // Delete from IndexedDB if root entry
     if (!entry.parentKey) {
       const dbKey = entry.fileHandle ? 'yaml::' + key : 'chart::' + key;
       dbDelete(dbKey).catch(() => {});
     }
-    // Collect this key + all descendant keys
     const toRemove = [];
     function collect(k) {
       toRemove.push(k);
@@ -553,8 +783,6 @@
       if (e) (e.subcharts || []).forEach(collect);
     }
     collect(key);
-
-    // Also remove from parent's subcharts list
     if (entry.parentKey) {
       const parent = state.charts[entry.parentKey];
       if (parent && parent.subcharts) {
@@ -562,34 +790,28 @@
         if (idx > -1) parent.subcharts.splice(idx, 1);
       }
     }
-
     for (const k of toRemove) {
       delete state.charts[k];
+      delete state.originalVals[k];
       const idx = state.chartOrder.indexOf(k);
       if (idx > -1) state.chartOrder.splice(idx, 1);
-      // Clear any selected values from removed chart
       for (const sv of [...state.selectedVals]) {
         if (sv.startsWith(k + '::')) state.selectedVals.delete(sv);
       }
     }
-
     if (toRemove.includes(state.selected) || state.selected === 'all') {
       state.selected = state.chartOrder.length > 0 ? 'all' : null;
     }
-
     toast(`Removed "${displayName(key)}"`);
     updateBatchBar();
     renderTree();
     renderValues();
   }
 
-  // ── Scan directory recursively ──
   async function scanDir(dirHandle, rootHandle, relPathPrefix) {
     let chartMeta = null;
     let valuesText = null;
     let valuesRelPath = null;
-
-    // Try Chart.yaml
     try {
       const chartFile = await dirHandle.getFileHandle('Chart.yaml');
       const file = await chartFile.getFile();
@@ -599,19 +821,15 @@
         const chartFile = await dirHandle.getFileHandle('chart.yaml');
         const file = await chartFile.getFile();
         chartMeta = jsyaml.load(await file.text()) || {};
-      } catch (e2) { /* no Chart.yaml here */ }
+      } catch (e2) {}
     }
-
-    // Try values.yaml
     const valFile = relPathPrefix ? relPathPrefix + '/values.yaml' : 'values.yaml';
     try {
       const vfh = await dirHandle.getFileHandle('values.yaml');
       const file = await vfh.getFile();
       valuesText = await file.text();
       valuesRelPath = valFile;
-    } catch (e) { /* no values.yaml */ }
-
-    // Recurse into charts/ subdirectory
+    } catch (e) {}
     let subchartEntries = [];
     try {
       const chartsDir = await dirHandle.getDirectoryHandle('charts');
@@ -622,10 +840,8 @@
           if (sub) subchartEntries.push(sub);
         }
       }
-    } catch (e) { /* no charts/ subdir */ }
-
+    } catch (e) {}
     if (!chartMeta && !valuesText && subchartEntries.length === 0) return null;
-
     const name = (chartMeta && chartMeta.name) || dirHandle.name || 'unknown';
     const version = (chartMeta && chartMeta.version) || '';
     const description = (chartMeta && chartMeta.description) || '';
@@ -633,76 +849,42 @@
     if (valuesText) {
       try { values = jsyaml.load(valuesText) || {}; } catch (e) { values = {}; }
     }
-
-    return {
-      name,
-      version,
-      description,
-      rootHandle,
-      valuesRelPath,
-      values,
-      subchartEntries,
-    };
+    return {name, version, description, rootHandle, valuesRelPath, values, subchartEntries};
   }
 
-  // ── Register scanned result into state ──
   function registerEntry(entry, parentKey, rootKey) {
-    // Build a unique key: for root it's the name, for subcharts it's rootKey|name
     const key = parentKey === null ? entry.name : (rootKey + '|' + entry.name);
-
     const chartEntry = {
-      key,
-      name: entry.name,
-      version: entry.version,
-      description: entry.description,
-      rootHandle: entry.rootHandle,
-      valuesRelPath: entry.valuesRelPath,
-      values: entry.values,
-      subcharts: [],
-      parentKey: parentKey,
+      key, name: entry.name, version: entry.version, description: entry.description,
+      rootHandle: entry.rootHandle, valuesRelPath: entry.valuesRelPath,
+      values: entry.values, subcharts: [], parentKey,
     };
-
     state.charts[key] = chartEntry;
     state.chartOrder.push(key);
-
+    if (entry.values) snapshotOriginal(key, entry.values);
     const effectiveRoot = parentKey === null ? key : rootKey;
     for (const sub of (entry.subchartEntries || [])) {
       const subKey = registerEntry(sub, key, effectiveRoot);
       chartEntry.subcharts.push(subKey);
     }
-
     return key;
   }
 
-  // ── Add chart folder (File System Access API) ──
   $('add-chart-btn').onclick = async () => {
-    if (!hasFSAPI) {
-      toast('File System Access API not supported in this browser. Use Chrome or Edge.', true);
-      return;
-    }
+    if (!hasFSAPI) { toast('File System Access API not supported. Use Chrome or Edge.', true); return; }
     let dirHandle;
-    try {
-      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-    } catch (e) {
-      if (e.name !== 'AbortError') toast('Could not open directory: ' + e.message, true);
-      return;
-    }
+    try { dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' }); }
+    catch (e) { if (e.name !== 'AbortError') toast('Could not open directory: ' + e.message, true); return; }
     try {
       const result = await scanDir(dirHandle, dirHandle, '');
-      if (!result) {
-        toast('No Chart.yaml or values.yaml found in selected directory.', true);
-        return;
-      }
+      if (!result) { toast('No Chart.yaml or values.yaml found in selected directory.', true); return; }
       const rootKey = registerEntry(result, null, null);
       state.selected = rootKey;
       const total = countAllDescendants(rootKey);
       saveHandle('chart::' + rootKey, 'chart', dirHandle);
       toast(`Added "${result.name}" (${total} chart${total === 1 ? '' : 's'})`);
-      renderTree();
-      renderValues();
-    } catch (e) {
-      toast('Error scanning directory: ' + e.message, true);
-    }
+      renderTree(); renderValues();
+    } catch (e) { toast('Error scanning directory: ' + e.message, true); }
   };
 
   function countAllDescendants(key) {
@@ -713,22 +895,15 @@
     return n;
   }
 
-  // ── Add YAML file (File System Access API) ──
   $('add-yaml-btn').onclick = async () => {
-    if (!hasFSAPI) {
-      toast('File System Access API not supported in this browser. Use Chrome or Edge.', true);
-      return;
-    }
+    if (!hasFSAPI) { toast('File System Access API not supported. Use Chrome or Edge.', true); return; }
     let fileHandles;
     try {
       fileHandles = await window.showOpenFilePicker({
         multiple: true,
         types: [{ description: 'YAML files', accept: { 'text/yaml': ['.yaml', '.yml'] } }],
       });
-    } catch (e) {
-      if (e.name !== 'AbortError') toast('Could not open file: ' + e.message, true);
-      return;
-    }
+    } catch (e) { if (e.name !== 'AbortError') toast('Could not open file: ' + e.message, true); return; }
     let added = 0;
     for (const fh of fileHandles) {
       try {
@@ -737,40 +912,22 @@
         const values = jsyaml.load(text) || {};
         const name = file.name.replace(/\.(ya?ml)$/i, '');
         const key = name;
-        state.charts[key] = {
-          key,
-          name,
-          version: '',
-          description: '',
-          rootHandle: null,
-          fileHandle: fh,     // direct handle for write-back
-          valuesRelPath: file.name,
-          values,
-          subcharts: [],
-          parentKey: null,
-        };
+        state.charts[key] = {key, name, version:'', description:'', rootHandle:null, fileHandle:fh, valuesRelPath:file.name, values, subcharts:[], parentKey:null};
         state.chartOrder.push(key);
+        snapshotOriginal(key, values);
         saveHandle('yaml::' + key, 'yaml', fh);
         added++;
         state.selected = key;
-      } catch (e) {
-        toast('Failed to load ' + (fh.name || 'file') + ': ' + e.message, true);
-      }
+      } catch (e) { toast('Failed to load ' + (fh.name || 'file') + ': ' + e.message, true); }
     }
-    if (added > 0) {
-      toast(`Loaded ${added} YAML file${added === 1 ? '' : 's'}`);
-      renderTree();
-      renderValues();
-    }
+    if (added > 0) { toast(`Loaded ${added} YAML file${added === 1 ? '' : 's'}`); renderTree(); renderValues(); }
   };
 
-  // ── Render values ──
   function getChartKeysToShow() {
     const all = state.chartOrder.filter(k => state.charts[k]);
     if (!state.selected || state.selected === 'all') return all;
     const entry = state.charts[state.selected];
     if (!entry) return all;
-    // Include selected + all descendants
     const result = [];
     function collect(k) {
       result.push(k);
@@ -786,7 +943,6 @@
     const query = $('search').value.trim();
     $('clear-x').style.display = query ? 'block' : 'none';
     const statusLine = $('status-line');
-
     const hasCharts = state.chartOrder.length > 0;
 
     if (!hasCharts) {
@@ -798,7 +954,6 @@
     }
 
     const showKeys = getChartKeysToShow();
-
     if (state.selected === 'all' || !state.selected) {
       $('val-name').textContent = 'All charts';
       $('val-desc').textContent = state.chartOrder.filter(k => !state.charts[k].parentKey).length + ' root charts loaded';
@@ -819,7 +974,10 @@
       flatten(entry.values, '', flat);
       let filtered = flat;
       if (query) filtered = flat.filter(e => e.path.toLowerCase().includes(q) || String(e.val).toLowerCase().includes(q));
-      if (query && !filtered.length) continue;
+      // Feature 3: changed-only filter
+      if (state.showChangedOnly) filtered = filtered.filter(e => isChanged(key, e.path, e.val));
+      if (query && !filtered.length && !state.showChangedOnly) continue;
+      if (!filtered.length) continue;
       totalMatches += filtered.length;
 
       if (showKeys.length > 1) {
@@ -830,55 +988,87 @@
         html += `</div>`;
       }
 
+      const canCheck = !!(entry.rootHandle || entry.fileHandle);
       for (const e of filtered) {
         const svKey = key + '::' + e.path;
         const isChecked = state.selectedVals.has(svKey);
+        const changed = isChanged(key, e.path, e.val);
         const pathHtml = query ? highlight(e.path, query) : esc(e.path);
         const valDisplay = e.val === null ? 'null' : e.val;
         const valHtml = query ? highlight(valDisplay, query) : esc(valDisplay);
-        const canCheck = !!(entry.rootHandle || entry.fileHandle);
-        html += `<label class="val-row${isChecked ? ' checked' : ''}" data-key="${esc(svKey)}">`;
+        html += `<label class="val-row${isChecked ? ' checked' : ''}${changed ? ' changed' : ''}" data-key="${esc(svKey)}">`;
         html += `<input type="checkbox" class="val-cb"${isChecked ? ' checked' : ''}${!canCheck ? ' disabled title="Read-only file"' : ''}>`;
         html += `<span class="val-path">${pathHtml}</span>`;
         html += `<span class="val-sep">=</span>`;
         html += `<span class="val-val ${e.type}">${valHtml}</span>`;
+        // Feature 4: copy-to-all button (only if multiple charts loaded)
+        if (state.chartOrder.length > 1 && canCheck) {
+          const countWithPath = state.chartOrder.filter(ck => {
+            const ce = state.charts[ck];
+            return ce && ce.values && getNestedVal(ce.values, e.path) !== undefined;
+          }).length;
+          if (countWithPath > 1) {
+            html += `<button class="val-copy-btn" data-path="${esc(e.path)}" data-val="${esc(valDisplay)}" title="Select '${esc(e.path)}' in all ${countWithPath} charts">&#8681; ${countWithPath} charts</button>`;
+          }
+        }
         html += `</label>`;
       }
     }
 
-    if (query && !totalMatches) {
+    if (!totalMatches) {
       statusLine.innerHTML = '';
-      box.innerHTML = `<div class="empty">No matches for "${esc(query)}"</div>`;
+      if (state.showChangedOnly) {
+        box.innerHTML = `<div class="empty"><span>&#10003;</span>No changed fields in this view.</div>`;
+      } else {
+        box.innerHTML = `<div class="empty">No matches for "${esc(query)}"</div>`;
+      }
       return;
     }
 
     statusLine.innerHTML = query
       ? `<span class="ct">${totalMatches}</span> match${totalMatches === 1 ? '' : 'es'} for "${esc(query)}"`
-      : `<span class="ct">${totalMatches}</span> total keys`;
+      : `<span class="ct">${totalMatches}</span> total keys${state.showChangedOnly ? ' (changed only)' : ''}`;
 
     box.innerHTML = html;
 
-    // Attach checkbox events
     box.querySelectorAll('.val-row').forEach(row => {
       const cb = row.querySelector('.val-cb');
       if (!cb || cb.disabled) return;
       cb.addEventListener('change', () => {
         const svKey = row.dataset.key;
-        if (cb.checked) {
-          state.selectedVals.add(svKey);
-          row.classList.add('checked');
-        } else {
-          state.selectedVals.delete(svKey);
-          row.classList.remove('checked');
-        }
+        if (cb.checked) { state.selectedVals.add(svKey); row.classList.add('checked'); }
+        else { state.selectedVals.delete(svKey); row.classList.remove('checked'); }
         updateBatchBar();
+      });
+    });
+
+    // Feature 4: copy-to-all click
+    box.querySelectorAll('.val-copy-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const dotPath = btn.dataset.path;
+        const val = btn.dataset.val;
+        let count = 0;
+        for (const chartKey of state.chartOrder) {
+          const ce = state.charts[chartKey];
+          if (!ce || !ce.values || !ce.rootHandle && !ce.fileHandle) continue;
+          if (getNestedVal(ce.values, dotPath) !== undefined) {
+            state.selectedVals.add(chartKey + '::' + dotPath);
+            count++;
+          }
+        }
+        $('new-val').value = val;
+        setYamlMode(false);
+        updateBatchBar();
+        renderValues();
+        toast(`Selected "${dotPath}" in ${count} chart${count===1?'':'s'}`);
       });
     });
 
     queueSync();
   }
 
-  // ── Batch bar ──
   function updateBatchBar() {
     const count = state.selectedVals.size;
     const bar = $('batch-bar');
@@ -888,18 +1078,9 @@
       bar.classList.remove('hidden');
       $('sel-count').textContent = `${count} selected`;
     }
+    updateUndoBtn();
   }
 
-  function getFieldType(chartKey, dotPath) {
-    const entry = state.charts[chartKey];
-    if (!entry || !entry.values) return 'str';
-    const flat = [];
-    flatten(entry.values, '', flat);
-    const found = flat.find(f => f.path === dotPath);
-    return found ? found.type : 'str';
-  }
-
-  // Returns user-facing category: 'string' | 'list' | 'map'
   function getFieldCategory(chartKey, dotPath) {
     const entry = state.charts[chartKey];
     if (!entry || !entry.values) return 'string';
@@ -908,21 +1089,6 @@
     const found = flat.find(f => f.path === dotPath);
     if (!found || found.type !== 'arr') return 'string';
     return found.val === '[]' ? 'list' : 'map';
-  }
-
-  function getFieldOriginalVal(chartKey, dotPath) {
-    const entry = state.charts[chartKey];
-    if (!entry || !entry.values) return undefined;
-    const flat = [];
-    flatten(entry.values, '', flat);
-    // reconstruct object value at path for compound types
-    const keys = dotPath.split('.');
-    let cur = entry.values;
-    for (const k of keys) {
-      if (cur == null || typeof cur !== 'object') return undefined;
-      cur = cur[k];
-    }
-    return cur;
   }
 
   let yamlMode = false;
@@ -946,35 +1112,22 @@
 
   $('apply-btn').onclick = async () => {
     const newValStr = yamlMode ? $('yaml-val').value.trim() : $('new-val').value;
-    if (!newValStr && newValStr !== '0') {
-      toast('Enter a new value first', true);
-      return;
-    }
-    if (state.selectedVals.size === 0) {
-      toast('No values selected', true);
-      return;
-    }
+    if (!newValStr && newValStr !== '0') { toast('Enter a new value first', true); return; }
+    if (state.selectedVals.size === 0) { toast('No values selected', true); return; }
 
-    // Group by (chartKey, valuesRelPath)
-    // svKey format: "chartKey::dotPath"
-    const groups = new Map(); // chartKey -> [dotPath, ...]
+    const groups = new Map();
     for (const svKey of state.selectedVals) {
       const sepIdx = svKey.indexOf('::');
       if (sepIdx === -1) continue;
       const chartKey = svKey.slice(0, sepIdx);
       const dotPath = svKey.slice(sepIdx + 2);
       const entry = state.charts[chartKey];
-      if (!entry || (!entry.rootHandle && !entry.fileHandle)) continue; // skip view-only
+      if (!entry || (!entry.rootHandle && !entry.fileHandle)) continue;
       if (!groups.has(chartKey)) groups.set(chartKey, []);
       groups.get(chartKey).push(dotPath);
     }
+    if (groups.size === 0) { toast('All selected values are read-only', true); return; }
 
-    if (groups.size === 0) {
-      toast('All selected values are read-only', true);
-      return;
-    }
-
-    // Option C: block mixed-type selection
     const selCategories = new Set();
     for (const svKey of state.selectedVals) {
       const sep = svKey.indexOf('::');
@@ -987,26 +1140,20 @@
       return;
     }
 
-    // Option B: YAML mode — parse textarea value
     let parsedYamlVal;
     if (yamlMode) {
       try {
         parsedYamlVal = jsyaml.load(newValStr);
         if (parsedYamlVal === undefined) throw new Error('Empty YAML');
-      } catch (e) {
-        toast('Invalid YAML: ' + e.message, true);
-        return;
-      }
+      } catch (e) { toast('Invalid YAML: ' + e.message, true); return; }
     }
 
-    let totalUpdated = 0;
-    let filesWritten = 0;
+    let totalUpdated = 0, filesWritten = 0;
     const errors = [];
 
     for (const [chartKey, dotPaths] of groups) {
       const entry = state.charts[chartKey];
       try {
-        // Get file handle — direct (standalone YAML) or via rootHandle (chart dir)
         let fileHandle;
         if (entry.fileHandle) {
           fileHandle = entry.fileHandle;
@@ -1014,63 +1161,125 @@
           const relPath = entry.valuesRelPath;
           const parts = relPath.split('/');
           let dirHandle = entry.rootHandle;
-          for (let i = 0; i < parts.length - 1; i++) {
-            dirHandle = await dirHandle.getDirectoryHandle(parts[i]);
-          }
+          for (let i = 0; i < parts.length - 1; i++) dirHandle = await dirHandle.getDirectoryHandle(parts[i]);
           fileHandle = await dirHandle.getFileHandle(parts[parts.length - 1]);
         }
 
-        // Read current content
         const file = await fileHandle.getFile();
-        const text = await file.text();
-        const obj = jsyaml.load(text) || {};
+        const prevContent = await file.text();
+        const obj = jsyaml.load(prevContent) || {};
 
-        // Apply all changes
+        // Feature 7: backup before first write to this file
+        const backupKey = chartKey + '::' + (entry.valuesRelPath || '');
+        if (!state.backedUpFiles.has(backupKey)) {
+          try {
+            const bakName = (entry.valuesRelPath || 'values.yaml').split('/').pop().replace(/\.ya?ml$/i, '') + '.bak';
+            let bakDir = entry.rootHandle;
+            if (entry.valuesRelPath && entry.valuesRelPath.includes('/')) {
+              const parts = entry.valuesRelPath.split('/');
+              for (let i = 0; i < parts.length - 1; i++) bakDir = await bakDir.getDirectoryHandle(parts[i]);
+            }
+            if (bakDir) {
+              const bakHandle = await bakDir.getFileHandle(bakName, {create: true});
+              const bakWritable = await bakHandle.createWritable();
+              await bakWritable.write(prevContent);
+              await bakWritable.close();
+              state.backedUpFiles.add(backupKey);
+            }
+          } catch {} // backup failure is non-fatal
+        }
+
+        // Feature 6: push undo frame before writing
+        state.undoStack.push({
+          fileHandle,
+          prevContent,
+          chartKey,
+          dotPaths: [...dotPaths],
+          label: `${entry.name} (${dotPaths.length} field${dotPaths.length===1?'':'s'})`,
+        });
+        if (state.undoStack.length > 20) state.undoStack.shift();
+
         for (const dotPath of dotPaths) {
-          // Find original value to coerce type
+          // Feature 2: record diff
+          const oldRawVal = getNestedVal(obj, dotPath);
           const keys = dotPath.split('.');
           let cur = obj;
-          for (const k of keys.slice(0, -1)) {
-            if (cur == null || typeof cur !== 'object') { cur = null; break; }
-            cur = cur[k];
-          }
+          for (const k of keys.slice(0, -1)) { if (cur == null || typeof cur !== 'object') { cur = null; break; } cur = cur[k]; }
           const lastKey = keys[keys.length - 1];
           const original = cur != null && typeof cur === 'object' ? cur[lastKey] : undefined;
           const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
           setNestedPath(obj, dotPath, coerced);
+          recordDiff(chartKey, entry.name, dotPath, oldRawVal, coerced);
           totalUpdated++;
         }
 
-        // Serialize and write back
         const yaml = jsyaml.dump(obj, { indent: 2, lineWidth: -1 });
         const writable = await fileHandle.createWritable();
         await writable.write(yaml);
         await writable.close();
-
-        // Update in-memory values
         entry.values = obj;
         filesWritten++;
 
-      } catch (e) {
-        errors.push(`${displayName(chartKey)}: ${e.message}`);
-      }
+      } catch (e) { errors.push(`${displayName(chartKey)}: ${e.message}`); }
     }
 
     if (errors.length > 0) {
       toast('Write errors: ' + errors.join('; '), true);
     } else {
-      toast(`Updated ${totalUpdated} value${totalUpdated === 1 ? '' : 's'} in ${filesWritten} file${filesWritten === 1 ? '' : 's'}`);
+      toast(`Updated ${totalUpdated} value${totalUpdated===1?'':'s'} in ${filesWritten} file${filesWritten===1?'':'s'}`);
     }
 
-    // Clear selection and re-render
     state.selectedVals.clear();
     $('new-val').value = '';
     setYamlMode(false);
     updateBatchBar();
+    updateUndoBtn();
     renderValues();
   };
 
-  // ── Panel height sync ──
+  // ── Feature 6: Undo button ──
+  $('undo-btn').onclick = undoLastApply;
+
+  // ── Feature 3: Changed-only toggle ──
+  $('changed-only-btn').onclick = () => {
+    state.showChangedOnly = !state.showChangedOnly;
+    $('changed-only-btn').classList.toggle('active', state.showChangedOnly);
+    renderValues();
+  };
+
+  // ── Feature 2: Diff badge click ──
+  $('diff-badge').onclick = showDiffModal;
+  $('diff-modal-close').onclick = () => $('diff-modal-overlay').classList.add('hidden');
+  $('diff-modal-overlay').onclick = e => { if (e.target === $('diff-modal-overlay')) $('diff-modal-overlay').classList.add('hidden'); };
+
+  // ── Feature 5: Presets ──
+  $('presets-btn').onclick = showPresetModal;
+  $('preset-modal-close').onclick = () => $('preset-modal-overlay').classList.add('hidden');
+  $('preset-modal-overlay').onclick = e => { if (e.target === $('preset-modal-overlay')) $('preset-modal-overlay').classList.add('hidden'); };
+
+  // ── Feature 7: Clean backups ──
+  $('clean-backups-btn').onclick = async () => {
+    if (!state.backedUpFiles.size) { toast('No backup files created this session', true); return; }
+    let cleaned = 0, failed = 0;
+    for (const backupKey of state.backedUpFiles) {
+      const sep = backupKey.indexOf('::');
+      const chartKey = backupKey.slice(0, sep);
+      const entry = state.charts[chartKey];
+      if (!entry || !entry.rootHandle) continue;
+      try {
+        const relPath = entry.valuesRelPath || 'values.yaml';
+        const bakName = relPath.split('/').pop().replace(/\.ya?ml$/i, '') + '.bak';
+        let dir = entry.rootHandle;
+        const parts = relPath.split('/');
+        for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+        await dir.removeEntry(bakName);
+        cleaned++;
+      } catch { failed++; }
+    }
+    state.backedUpFiles.clear();
+    toast(`Cleaned ${cleaned} backup${cleaned===1?'':'s'}${failed?` (${failed} failed)`:''}`);
+  };
+
   function syncPanelHeights() {
     const sb = $('scrollbox');
     if (!sb) return;
@@ -1092,35 +1301,30 @@
   function queueSync() { requestAnimationFrame(syncPanelHeights); }
   window.addEventListener('resize', queueSync);
 
-  // ── Search events ──
   let searchT, treeT;
   $('search').oninput = () => { clearTimeout(searchT); searchT = setTimeout(renderValues, 60); };
   $('clear-x').onclick = () => { $('search').value = ''; renderValues(); };
-  $('tree-search').oninput = () => {
-    clearTimeout(treeT);
-    treeT = setTimeout(() => { renderTree(); }, 60);
-  };
+  $('tree-search').oninput = () => { clearTimeout(treeT); treeT = setTimeout(() => { renderTree(); }, 60); };
   $('tree-clear-x').onclick = () => { $('tree-search').value = ''; renderTree(); };
 
-  // ── Clear all ──
   $('clear-all-btn').onclick = async () => {
     if (!state.chartOrder.length) return;
-    state.charts = {}; state.chartOrder = []; state.selected = null; state.selectedVals.clear();
+    state.charts = {}; state.chartOrder = []; state.selected = null;
+    state.selectedVals.clear(); state.originalVals = {}; state.sessionDiffs = [];
+    state.undoStack = []; state.backedUpFiles.clear(); state.showChangedOnly = false;
+    $('changed-only-btn').classList.remove('active');
     try { await dbClear(); } catch {}
-    updateBatchBar(); renderTree(); renderValues();
+    updateBatchBar(); updateDiffBadge(); renderTree(); renderValues();
     toast('Cleared all charts');
   };
 
-  // ── Session restore / dismiss ──
   $('restore-btn').onclick = restoreSession;
   $('dismiss-banner-btn').onclick = () => { $('session-banner').classList.add('hidden'); dbClear().catch(()=>{}); };
 
-  // ── About modal ──
   $('about-btn').onclick = () => $('about-modal-overlay').classList.remove('hidden');
   $('about-close').onclick = () => $('about-modal-overlay').classList.add('hidden');
   $('about-modal-overlay').onclick = e => { if (e.target === $('about-modal-overlay')) $('about-modal-overlay').classList.add('hidden'); };
 
-  // ── Initial render ──
   renderTree();
   renderValues();
   checkSavedHandles();
