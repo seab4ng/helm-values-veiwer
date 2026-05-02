@@ -1,4 +1,0 @@
-discovery:
-  address: istiod.istio-system.svc:15012
-  timeout: 30s
-  maxConnections: 1000

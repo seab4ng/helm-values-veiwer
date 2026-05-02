@@ -1,8 +1,0 @@
-connectors:
-  - debezium-postgres
-  - debezium-mysql
-  - jdbc-sink
-  - s3-sink
-image:
-  repository: ghcr.io/example/connector-schemas
-  tag: 7.5.0

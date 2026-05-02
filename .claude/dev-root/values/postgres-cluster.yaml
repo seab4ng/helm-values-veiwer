@@ -1,9 +1,0 @@
-replicas: 3
-image:
-  repository: postgres
-  tag: 15.5-alpine
-auth:
-  username: app
-  database: appdb
-persistence:
-  size: 100Gi
