@@ -458,14 +458,15 @@
     flatten(values, '', flat);
     if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
     for (const f of flat) {
-      state.originalVals[chartKey][f.path] = String(f.val);
+      state.originalVals[chartKey][f.path] = f.val; // raw JS value
     }
   }
 
   function isChanged(chartKey, dotPath, currentVal) {
     const orig = state.originalVals[chartKey];
     if (!orig || !(dotPath in orig)) return false;
-    return orig[dotPath] !== String(currentVal === null ? 'null' : currentVal);
+    const origVal = orig[dotPath];
+    return String(origVal === null ? 'null' : origVal) !== String(currentVal === null ? 'null' : currentVal);
   }
 
   function updateDiffBadge() {
@@ -651,16 +652,79 @@
     toast(`Preset "${preset.name}" — ${applied} field${applied===1?'':'s'} selected`);
   }
 
-  // ── Feature 6: Undo ──
+  // ── Feature 6: Undo / Revert ──
   function updateUndoBtn() {
     const btn = $('undo-btn');
     if (!btn) return;
-    if (state.undoStack.length === 0) {
-      btn.style.display = 'none';
-    } else {
-      btn.style.display = '';
-      btn.title = `Undo: ${state.undoStack[state.undoStack.length-1].label}`;
+    if (state.selectedVals.size > 0) {
+      const anyChanged = [...state.selectedVals].some(svKey => {
+        const sep = svKey.indexOf('::');
+        const curVal = getNestedVal(state.charts[svKey.slice(0, sep)]?.values, svKey.slice(sep + 2));
+        return isChanged(svKey.slice(0, sep), svKey.slice(sep + 2), curVal);
+      });
+      if (anyChanged) {
+        btn.style.display = '';
+        btn.textContent = '↩ Revert selected';
+        btn.title = 'Revert selected fields to their original values';
+        return;
+      }
     }
+    if (state.undoStack.length > 0) {
+      btn.style.display = '';
+      btn.textContent = '↩ Undo';
+      btn.title = `Undo: ${state.undoStack[state.undoStack.length - 1].label}`;
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+
+  async function revertSelectedToOriginal() {
+    const groups = new Map();
+    for (const svKey of state.selectedVals) {
+      const sep = svKey.indexOf('::');
+      const chartKey = svKey.slice(0, sep);
+      const dotPath = svKey.slice(sep + 2);
+      const entry = state.charts[chartKey];
+      if (!entry || (!entry.rootHandle && !entry.fileHandle)) continue;
+      const curVal = getNestedVal(entry.values, dotPath);
+      if (!isChanged(chartKey, dotPath, curVal)) continue;
+      if (!groups.has(chartKey)) groups.set(chartKey, []);
+      groups.get(chartKey).push(dotPath);
+    }
+    if (!groups.size) { toast('No changed fields in selection', true); return; }
+    let reverted = 0;
+    const errors = [];
+    for (const [chartKey, dotPaths] of groups) {
+      const entry = state.charts[chartKey];
+      try {
+        let fileHandle;
+        if (entry.fileHandle) {
+          fileHandle = entry.fileHandle;
+        } else {
+          const parts = entry.valuesRelPath.split('/');
+          let dir = entry.rootHandle;
+          for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+          fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
+        }
+        const file = await fileHandle.getFile();
+        const obj = jsyaml.load(await file.text()) || {};
+        const origVals = state.originalVals[chartKey] || {};
+        for (const dotPath of dotPaths) {
+          if (dotPath in origVals) { setNestedPath(obj, dotPath, origVals[dotPath]); reverted++; }
+        }
+        const writable = await fileHandle.createWritable();
+        await writable.write(jsyaml.dump(obj, { indent: 2, lineWidth: -1 }));
+        await writable.close();
+        entry.values = obj;
+      } catch (e) { errors.push(`${displayName(chartKey)}: ${e.message}`); }
+    }
+    if (errors.length) toast('Revert errors: ' + errors.join('; '), true);
+    else toast(`Reverted ${reverted} field${reverted === 1 ? '' : 's'} to original`);
+    state.selectedVals.clear();
+    updateBatchBar();
+    updateDiffBadge();
+    updateUndoBtn();
+    renderValues();
   }
 
   async function undoLastApply() {
@@ -1246,7 +1310,10 @@
   };
 
   // ── Feature 6: Undo button ──
-  $('undo-btn').onclick = undoLastApply;
+  $('undo-btn').onclick = () => {
+    if (state.selectedVals.size > 0) revertSelectedToOriginal();
+    else undoLastApply();
+  };
 
   // ── Feature 3: Changed-only toggle ──
   $('changed-only-btn').onclick = () => {
