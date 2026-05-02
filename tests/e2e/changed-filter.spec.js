@@ -6,7 +6,6 @@ async function applyChange(page, fieldText, value) {
   await page.fill('#new-val', value);
   await page.click('#apply-btn');
   await expect(page.locator('#toast-area .toast', { hasText: 'Updated' })).toBeVisible({ timeout: 3000 });
-  await page.click('#clear-sel-btn');
 }
 
 test.beforeEach(async ({ page }) => {

@@ -27,7 +27,6 @@ test('badge appears after applying a change', async ({ page }) => {
 
 test('badge count increments with multiple changed fields', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
   await applyChange(page, 'image.tag', 'v2.0');
   await expect(page.locator('#diff-badge')).toContainText('2 change');
 });
@@ -82,7 +81,6 @@ test('diff modal closes on overlay click', async ({ page }) => {
 test('badge hides after undoing all changes', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
   await expect(page.locator('#diff-badge')).toBeVisible();
-  await page.click('#clear-sel-btn');
   await page.click('#undo-btn'); // Undo all
   await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
@@ -91,12 +89,10 @@ test('badge hides after undoing all changes', async ({ page }) => {
 
 test('badge updates after reverting one of two changed fields', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
   await applyChange(page, 'image.tag', 'v2');
   await expect(page.locator('#diff-badge')).toContainText('2 change');
 
   // Revert only replicaCount
-  await page.click('#clear-sel-btn');
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#undo-btn'); // Revert selected
   await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });

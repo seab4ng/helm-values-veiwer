@@ -21,14 +21,15 @@ test('undo button hidden before any changes', async ({ page }) => {
 
 test('undo button shows "Revert selected" when a changed field is selected', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  // replicaCount checkbox is still checked after apply
+  // re-select the changed field so undo shows "Revert selected"
+  await page.locator('.val-row.changed', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await expect(page.locator('#undo-btn')).toBeVisible();
   await expect(page.locator('#undo-btn')).toContainText('Revert selected');
 });
 
 test('undo button shows "Undo all" when no fields selected but changes exist', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
+  // apply already clears selection — undo should show "Undo all"
   await expect(page.locator('#undo-btn')).toBeVisible();
   await expect(page.locator('#undo-btn')).toContainText('Undo all');
 });
@@ -59,9 +60,7 @@ test('Revert selected shows success toast', async ({ page }) => {
 test('Revert selected does not revert unselected changed fields', async ({ page }) => {
   // Change two fields
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
   await applyChange(page, 'image.tag', 'v2');
-  await page.click('#clear-sel-btn');
 
   // Select only replicaCount and revert
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
@@ -76,11 +75,9 @@ test('Revert selected does not revert unselected changed fields', async ({ page 
 
 test('Revert selected updates badge count', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
   await applyChange(page, 'image.tag', 'v2');
   await expect(page.locator('#diff-badge')).toContainText('2 change');
 
-  await page.click('#clear-sel-btn');
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#undo-btn');
   await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
@@ -91,9 +88,7 @@ test('Revert selected updates badge count', async ({ page }) => {
 
 test('Undo all reverts all changed fields', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
   await applyChange(page, 'image.tag', 'v2');
-  await page.click('#clear-sel-btn');
 
   await page.click('#undo-btn'); // Undo all
   await expect(page.locator('#toast-area .toast', { hasText: 'Reverted all' })).toBeVisible({ timeout: 3000 });
@@ -104,9 +99,7 @@ test('Undo all reverts all changed fields', async ({ page }) => {
 
 test('Undo all shows success toast with count', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
   await applyChange(page, 'image.tag', 'v2');
-  await page.click('#clear-sel-btn');
 
   await page.click('#undo-btn');
   await expect(page.locator('#toast-area .toast', { hasText: 'Reverted all 2' })).toBeVisible({ timeout: 3000 });
@@ -115,7 +108,6 @@ test('Undo all shows success toast with count', async ({ page }) => {
 test('Undo all hides badge after completion', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
   await expect(page.locator('#diff-badge')).toBeVisible();
-  await page.click('#clear-sel-btn');
 
   await page.click('#undo-btn');
   await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
@@ -126,7 +118,6 @@ test('Undo all hides badge after completion', async ({ page }) => {
 
 test('Undo all hides undo button after completion', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
-  await page.click('#clear-sel-btn');
   await page.click('#undo-btn');
   await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
@@ -137,7 +128,6 @@ test('Undo all hides undo button after completion', async ({ page }) => {
 test('Undo all hides Changed button after completion', async ({ page }) => {
   await applyChange(page, 'replicaCount', '5');
   await expect(page.locator('#changed-only-btn')).toBeVisible();
-  await page.click('#clear-sel-btn');
 
   await page.click('#undo-btn');
   await expect(page.locator('#toast-area .toast')).toBeVisible({ timeout: 3000 });
