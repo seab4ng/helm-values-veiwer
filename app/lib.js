@@ -140,6 +140,23 @@ const HelmLib=(function(){
     return str;
   }
 
-  return {flatten,esc,highlight,displayName,dirOf,buildChartTree,setNestedPath,coerceValue};
+  // Get value at dot-path in object (read-only, returns undefined if missing)
+  function getNestedVal(obj, dotPath) {
+    const keys = dotPath.split('.');
+    let cur = obj;
+    for (const k of keys) {
+      if (cur == null || typeof cur !== 'object') return undefined;
+      cur = cur[k];
+    }
+    return cur;
+  }
+
+  // Compare original vs current value for change detection
+  // origVal is raw JS value; currentVal is raw JS value
+  function valChanged(origVal, currentVal) {
+    return String(origVal === null ? 'null' : origVal) !== String(currentVal === null ? 'null' : currentVal);
+  }
+
+  return {flatten,esc,highlight,displayName,dirOf,buildChartTree,setNestedPath,coerceValue,getNestedVal,valChanged};
 })();
 if(typeof module!=='undefined') module.exports=HelmLib;
