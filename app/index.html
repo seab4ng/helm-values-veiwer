@@ -277,6 +277,8 @@
           <span id="diff-badge" class="diff-badge" style="display:none;" title="View session changes">0 changes</span>
           <!-- Feature 3: changed-only toggle -->
           <button class="btn btn-amber" id="changed-only-btn" style="font-size:11px;padding:4px 10px;display:none;" title="Show only fields changed this session">Changed</button>
+          <!-- Feature 6: undo — in header so it's clearly per-operation, not per-selection -->
+          <button class="btn" id="undo-btn" style="font-size:11px;padding:4px 10px;display:none;" title="Undo last apply">&#8617; Undo</button>
           <!-- Feature 5: presets -->
           <button class="btn" id="presets-btn" style="font-size:11px;padding:4px 10px;">Presets</button>
         </div>
@@ -294,8 +296,6 @@
         <input id="new-val" type="text" placeholder="New value (string, number, true/false)..." style="flex:1;min-width:120px;" />
         <textarea id="yaml-val" placeholder="YAML value (e.g. [80, 443] or&#10;key: value)" style="display:none;flex:1;min-width:180px;min-height:72px;resize:vertical;font-family:var(--mono);font-size:12px;padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;transition:border-color 0.15s;" spellcheck="false"></textarea>
         <button class="btn btn-primary" id="apply-btn">Apply to selected fields</button>
-        <!-- Feature 6: undo -->
-        <button class="btn" id="undo-btn" style="display:none;" title="Undo last apply">&#8617; Undo</button>
         <button class="btn btn-danger" id="clear-sel-btn">Clear selection</button>
       </div>
       <div class="scrollbox" id="scrollbox"></div>
