@@ -48,13 +48,6 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
-      - name: Post test summary comment on PR
-        uses: daun07/playwright-report-summary@v3
-        if: always() && github.event_name == 'pull_request'
-        with:
-          report-file: playwright-report.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Deploy Playwright report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: always() && github.ref == 'refs/heads/main'
