@@ -609,9 +609,6 @@
         Save (${selCount} field${selCount===1?'':'s'})
       </button>
     </div>`;
-    if (selCount > 0 && !newVal) {
-      html += `<div style="font-size:11px;color:var(--amber);margin-top:4px;">Tip: fill in a value before saving to include it in the preset.</div>`;
-    }
     $('preset-modal-body').innerHTML = html;
 
     // Detail (field list) buttons
@@ -701,10 +698,13 @@
       saveBtn.onclick = () => {
         const name = $('preset-name-input').value.trim();
         if (!name) { toast('Enter a preset name', true); return; }
-        const value = $('new-val').value.trim();
         const entries = [...state.selectedVals].map(svKey => {
           const sep = svKey.indexOf('::');
-          return {chartKey: svKey.slice(0, sep), dotPath: svKey.slice(sep + 2), value};
+          const chartKey = svKey.slice(0, sep);
+          const dotPath = svKey.slice(sep + 2);
+          const curVal = getNestedVal(state.charts[chartKey]?.values, dotPath);
+          const value = curVal === null ? 'null' : curVal !== undefined ? String(curVal) : '';
+          return {chartKey, dotPath, value};
         });
         const preset = {id: Date.now().toString(36), name, entries};
         const presets = loadPresets();
@@ -716,26 +716,63 @@
     }
   }
 
-  function applyPreset(presetId) {
+  async function applyPreset(presetId) {
     const preset = loadPresets().find(p => p.id === presetId);
     if (!preset) return;
-    let applied = 0;
+
+    // Group patches by chart: {dotPath, value} per writable chart
+    const groups = new Map();
     for (const entry of preset.entries) {
       for (const chartKey of state.chartOrder) {
         const chart = state.charts[chartKey];
-        if (!chart || !chart.values) continue;
-        const val = getNestedVal(chart.values, entry.dotPath);
-        if (val === undefined) continue;
-        state.selectedVals.add(chartKey + '::' + entry.dotPath);
-        applied++;
+        if (!chart || !chart.values || (!chart.rootHandle && !chart.fileHandle)) continue;
+        if (getNestedVal(chart.values, entry.dotPath) === undefined) continue;
+        if (!groups.has(chartKey)) groups.set(chartKey, []);
+        groups.get(chartKey).push({dotPath: entry.dotPath, value: entry.value});
       }
     }
-    if (preset.entries[0]?.value) $('new-val').value = preset.entries[0].value;
+
+    if (!groups.size) {
+      presetExportIds.clear();
+      $('preset-modal-overlay').classList.add('hidden');
+      toast(`Preset "${preset.name}" — no matching fields`, true);
+      return;
+    }
+
+    let totalUpdated = 0;
+    const errors = [];
+    for (const [chartKey, patches] of groups) {
+      const entry = state.charts[chartKey];
+      try {
+        let fileHandle;
+        if (entry.fileHandle) {
+          fileHandle = entry.fileHandle;
+        } else {
+          const parts = entry.valuesRelPath.split('/');
+          let dir = entry.rootHandle;
+          for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+          fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
+        }
+        const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
+        for (const {dotPath, value} of patches) {
+          const origVal = getNestedVal(obj, dotPath);
+          setNestedPath(obj, dotPath, coerceValue(value, origVal));
+          totalUpdated++;
+        }
+        const writable = await fileHandle.createWritable();
+        await writable.write(jsyaml.dump(obj, {indent: 2, lineWidth: -1}));
+        await writable.close();
+        entry.values = obj;
+      } catch (e) { errors.push(`${displayName(chartKey)}: ${e.message}`); }
+    }
+
     presetExportIds.clear();
     $('preset-modal-overlay').classList.add('hidden');
-    updateBatchBar();
+    updateDiffBadge();
+    updateUndoBtn();
     renderValues();
-    toast(`Preset "${preset.name}" — ${applied} field${applied===1?'':'s'} selected`);
+    if (errors.length) toast(`Preset errors: ${errors.join('; ')}`, true);
+    else toast(`Applied "${preset.name}" — ${totalUpdated} field${totalUpdated===1?'':'s'} written`);
   }
 
   // ── Field history popup ──
