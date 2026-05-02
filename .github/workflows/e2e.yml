@@ -8,7 +8,8 @@ on:
 
 permissions:
   checks: write
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
   e2e:
@@ -46,3 +47,18 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 14
+
+      - name: Post test summary comment on PR
+        uses: daun07/playwright-report-summary@v3
+        if: always() && github.event_name == 'pull_request'
+        with:
+          report-file: playwright-report.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy Playwright report to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always() && github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./playwright-report
+          keep_files: false
