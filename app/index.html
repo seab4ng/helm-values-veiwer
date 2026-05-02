@@ -397,6 +397,7 @@
           if (!result) { failed++; continue; }
           const rootKey = registerEntry(result, null, null);
           state.selected = rootKey;
+          await detectBakFilesAll(rootKey);
           restored++;
         } else if (row.type === 'yaml') {
           const file = await row.handle.getFile();
@@ -428,8 +429,6 @@
     chartOrder: [],
     selected: null,
     selectedVals: new Set(),
-    // Feature 2: session diffs
-    sessionDiffs: [],       // [{chartKey, dotPath, oldVal, newVal, chartName}]
     // Feature 3: original values snapshot
     originalVals: {},       // {chartKey: {dotPath: serializedOrigVal}}
     showChangedOnly: false,
@@ -469,16 +468,17 @@
     return orig[dotPath] !== String(currentVal === null ? 'null' : currentVal);
   }
 
-  // ── Feature 2: Diff tracking ──
-  function recordDiff(chartKey, chartName, dotPath, oldVal, newVal) {
-    state.sessionDiffs.push({chartKey, chartName, dotPath, oldVal: String(oldVal ?? ''), newVal: String(newVal ?? '')});
-    updateDiffBadge();
-  }
-
   function updateDiffBadge() {
     const badge = $('diff-badge');
     const changedBtn = $('changed-only-btn');
-    const n = state.sessionDiffs.length;
+    let n = 0;
+    for (const chartKey of state.chartOrder) {
+      const entry = state.charts[chartKey];
+      if (!entry || !entry.values) continue;
+      const flat = [];
+      flatten(entry.values, '', flat);
+      for (const f of flat) { if (isChanged(chartKey, f.path, f.val)) n++; }
+    }
     if (n === 0) {
       badge.style.display = 'none';
       changedBtn.style.display = 'none';
@@ -491,15 +491,22 @@
 
   function showDiffModal() {
     const body = $('diff-modal-body');
-    if (!state.sessionDiffs.length) {
-      body.innerHTML = '<div class="diff-empty">No changes made this session yet.</div>';
-    } else {
-      // Group by chart
-      const byChart = new Map();
-      for (const d of state.sessionDiffs) {
-        if (!byChart.has(d.chartKey)) byChart.set(d.chartKey, {name: d.chartName, diffs: []});
-        byChart.get(d.chartKey).diffs.push(d);
+    const byChart = new Map();
+    for (const chartKey of state.chartOrder) {
+      const entry = state.charts[chartKey];
+      if (!entry || !entry.values) continue;
+      const flat = [];
+      flatten(entry.values, '', flat);
+      for (const f of flat) {
+        if (!isChanged(chartKey, f.path, f.val)) continue;
+        if (!byChart.has(chartKey)) byChart.set(chartKey, {name: entry.name, diffs: []});
+        const origStr = (state.originalVals[chartKey] || {})[f.path] ?? '';
+        byChart.get(chartKey).diffs.push({dotPath: f.path, oldVal: origStr, newVal: String(f.val === null ? 'null' : f.val)});
       }
+    }
+    if (!byChart.size) {
+      body.innerHTML = '<div class="diff-empty">No fields changed from original values.</div>';
+    } else {
       let html = '';
       for (const [, grp] of byChart) {
         html += `<div class="diff-file-hdr">${esc(grp.name)}</div>`;
@@ -666,27 +673,6 @@
       const entry = state.charts[frame.chartKey];
       if (entry) {
         entry.values = jsyaml.load(frame.prevContent) || {};
-        // Reconcile sessionDiffs for each undone path
-        const orig = state.originalVals[frame.chartKey] || {};
-        for (const dotPath of frame.dotPaths) {
-          const curVal = getNestedVal(entry.values, dotPath);
-          const curStr = String(curVal === null ? 'null' : (curVal ?? ''));
-          if (orig[dotPath] === curStr) {
-            // Back to original — remove all diff entries for this path
-            state.sessionDiffs = state.sessionDiffs.filter(
-              d => !(d.chartKey === frame.chartKey && d.dotPath === dotPath)
-            );
-          } else {
-            // Still different from original — update the last diff entry's newVal
-            for (let i = state.sessionDiffs.length - 1; i >= 0; i--) {
-              const d = state.sessionDiffs[i];
-              if (d.chartKey === frame.chartKey && d.dotPath === dotPath) {
-                d.newVal = curStr;
-                break;
-              }
-            }
-          }
-        }
         updateDiffBadge();
       }
       toast(`Undone: ${frame.label}`);
@@ -906,6 +892,28 @@
     return key;
   }
 
+  async function detectBakFiles(key) {
+    const entry = state.charts[key];
+    if (!entry || !entry.rootHandle || !entry.valuesRelPath) return;
+    try {
+      const relPath = entry.valuesRelPath;
+      const bakName = relPath.split('/').pop().replace(/\.ya?ml$/i, '') + '.bak';
+      let dir = entry.rootHandle;
+      const parts = relPath.split('/');
+      for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+      await dir.getFileHandle(bakName);
+      state.backedUpFiles.add(key + '::' + relPath);
+    } catch {}
+  }
+
+  async function detectBakFilesAll(key) {
+    await detectBakFiles(key);
+    const entry = state.charts[key];
+    if (entry && entry.subcharts) {
+      for (const sk of entry.subcharts) await detectBakFilesAll(sk);
+    }
+  }
+
   $('add-chart-btn').onclick = async () => {
     if (!hasFSAPI) { toast('File System Access API not supported. Use Chrome or Edge.', true); return; }
     let dirHandle;
@@ -918,6 +926,7 @@
       state.selected = rootKey;
       const total = countAllDescendants(rootKey);
       saveHandle('chart::' + rootKey, 'chart', dirHandle);
+      await detectBakFilesAll(rootKey);
       toast(`Added "${result.name}" (${total} chart${total === 1 ? '' : 's'})`);
       renderTree(); renderValues();
     } catch (e) { toast('Error scanning directory: ' + e.message, true); }
@@ -1202,16 +1211,12 @@
         if (state.undoStack.length > 20) state.undoStack.shift();
 
         for (const dotPath of dotPaths) {
-          // Feature 2: record diff
-          const oldRawVal = getNestedVal(obj, dotPath);
           const keys = dotPath.split('.');
           let cur = obj;
           for (const k of keys.slice(0, -1)) { if (cur == null || typeof cur !== 'object') { cur = null; break; } cur = cur[k]; }
-          const lastKey = keys[keys.length - 1];
-          const original = cur != null && typeof cur === 'object' ? cur[lastKey] : undefined;
+          const original = cur != null && typeof cur === 'object' ? cur[keys[keys.length - 1]] : undefined;
           const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
           setNestedPath(obj, dotPath, coerced);
-          recordDiff(chartKey, entry.name, dotPath, oldRawVal, coerced);
           totalUpdated++;
         }
 
@@ -1236,6 +1241,7 @@
     setYamlMode(false);
     updateBatchBar();
     updateUndoBtn();
+    updateDiffBadge();
     renderValues();
   };
 
@@ -1261,7 +1267,7 @@
 
   // ── Feature 7: Clean backups ──
   $('clean-backups-btn').onclick = async () => {
-    if (!state.backedUpFiles.size) { toast('No backup files created this session', true); return; }
+    if (!state.backedUpFiles.size) { toast('No backup files found', true); return; }
     let cleaned = 0, failed = 0;
     for (const backupKey of state.backedUpFiles) {
       const sep = backupKey.indexOf('::');
@@ -1312,7 +1318,7 @@
   $('clear-all-btn').onclick = async () => {
     if (!state.chartOrder.length) return;
     state.charts = {}; state.chartOrder = []; state.selected = null;
-    state.selectedVals.clear(); state.originalVals = {}; state.sessionDiffs = [];
+    state.selectedVals.clear(); state.originalVals = {};
     state.undoStack = []; state.backedUpFiles.clear(); state.showChangedOnly = false;
     $('changed-only-btn').classList.remove('active');
     try { await dbClear(); } catch {}
