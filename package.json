@@ -5,5 +5,9 @@
   "description": "Vendored browser deps for helm-values-editor (served locally for airgapped environments).",
   "dependencies": {
     "js-yaml": "4.1.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "serve": "^14.2.6"
   }
 }
