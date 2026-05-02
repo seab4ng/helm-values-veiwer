@@ -168,6 +168,7 @@
   .preset-save-row{display:flex;gap:8px;padding-top:12px;border-top:1px solid var(--border);}
   .preset-save-row input{flex:1;font-family:var(--font);font-size:13px;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;}
   .preset-save-row input:focus{border-color:var(--accent);}
+  .preset-toolbar{display:flex;gap:8px;padding:8px 0 4px;border-top:1px solid var(--border);margin-top:4px;}
 
   .about-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:flex;align-items:center;justify-content:center;}
   .about-modal-overlay.hidden{display:none;}
@@ -525,7 +526,8 @@
 
   // ── Feature 5: Presets (localStorage) ──
   const PRESETS_KEY = 'helm-editor-presets';
-  let presetDetailId = null; // which preset is showing its field detail
+  let presetDetailId = null;
+  let presetExportIds = new Set();
 
   function loadPresets() {
     try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]'); } catch { return []; }
@@ -550,6 +552,7 @@
       for (const p of presets) {
         const isDetailed = presetDetailId === p.id;
       html += `<div class="preset-item">
+          <input type="checkbox" class="preset-export-cb" data-pid="${esc(p.id)}" ${presetExportIds.has(p.id)?'checked':''} style="margin:0;cursor:pointer;" title="Select for export">
           <span class="preset-name">${esc(p.name)}</span>
           <span class="preset-meta">${p.entries.length} field${p.entries.length===1?'':'s'}</span>
           <button class="btn${isDetailed?' btn-primary':''}" style="font-size:11px;padding:3px 8px;" data-detail-preset="${esc(p.id)}" title="Show fields in this preset">&#128269;</button>
@@ -573,6 +576,11 @@
       }
       html += '</div>';
     }
+
+    html += `<div class="preset-toolbar">
+      <button class="btn" id="preset-export-btn" style="font-size:11px;padding:3px 10px;" ${!presets.length?'disabled':''} title="Export checked presets as YAML (or all if none checked)">&#8681; Export YAML</button>
+      <label class="btn" style="font-size:11px;padding:3px 10px;cursor:pointer;" title="Import presets from YAML file">&#8679; Import YAML<input type="file" id="preset-import-input" accept=".yaml,.yml" style="display:none"></label>
+    </div>`;
 
     const selCount = state.selectedVals.size;
     const newVal = $('new-val').value.trim();
@@ -608,6 +616,66 @@
         toast('Preset deleted');
       };
     });
+    // Export checkboxes
+    $('preset-modal-body').querySelectorAll('.preset-export-cb').forEach(cb => {
+      cb.onchange = () => {
+        if (cb.checked) presetExportIds.add(cb.dataset.pid);
+        else presetExportIds.delete(cb.dataset.pid);
+      };
+    });
+
+    // Export button
+    const exportBtn = $('preset-export-btn');
+    if (exportBtn) {
+      exportBtn.onclick = () => {
+        const all = loadPresets();
+        const toExport = presetExportIds.size > 0 ? all.filter(p => presetExportIds.has(p.id)) : all;
+        if (!toExport.length) { toast('No presets to export', true); return; }
+        const payload = {presets: toExport.map(p => ({
+          name: p.name,
+          entries: p.entries.map(e => Object.assign({dotPath: e.dotPath}, e.value ? {value: e.value} : {})),
+        }))};
+        const yaml = jsyaml.dump(payload, {lineWidth: -1});
+        const blob = new Blob([yaml], {type: 'text/yaml'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'helm-presets.yaml'; a.click();
+        URL.revokeObjectURL(url);
+        toast(`Exported ${toExport.length} preset${toExport.length===1?'':'s'}`);
+      };
+    }
+
+    // Import input
+    const importInput = document.getElementById('preset-import-input');
+    if (importInput) {
+      importInput.onchange = () => {
+        const file = importInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = jsyaml.load(ev.target.result);
+            if (!data || !Array.isArray(data.presets)) { toast('Invalid preset file', true); return; }
+            const existing = loadPresets();
+            const existingNames = new Set(existing.map(p => p.name));
+            let added = 0, skipped = 0;
+            for (const p of data.presets) {
+              if (!p.name || !Array.isArray(p.entries)) continue;
+              if (existingNames.has(p.name)) { skipped++; continue; }
+              existing.push({id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: p.name, entries: p.entries});
+              existingNames.add(p.name);
+              added++;
+            }
+            savePresets(existing);
+            renderPresetModal();
+            toast(skipped ? `Imported ${added}, skipped ${skipped} duplicate${skipped===1?'':'s'}` : `Imported ${added} preset${added===1?'':'s'}`);
+          } catch (err) { toast('Parse error: ' + err.message, true); }
+          importInput.value = '';
+        };
+        reader.readAsText(file);
+      };
+    }
+
     // Save preset button
     const saveBtn = $('preset-save-btn');
     if (saveBtn) {
@@ -644,6 +712,7 @@
       }
     }
     if (preset.entries[0]?.value) $('new-val').value = preset.entries[0].value;
+    presetExportIds.clear();
     $('preset-modal-overlay').classList.add('hidden');
     updateBatchBar();
     renderValues();
@@ -1360,8 +1429,8 @@
 
   // ── Feature 5: Presets ──
   $('presets-btn').onclick = showPresetModal;
-  $('preset-modal-close').onclick = () => { presetDetailId = null; $('preset-modal-overlay').classList.add('hidden'); };
-  $('preset-modal-overlay').onclick = e => { if (e.target === $('preset-modal-overlay')) { presetDetailId = null; $('preset-modal-overlay').classList.add('hidden'); } };
+  $('preset-modal-close').onclick = () => { presetDetailId = null; presetExportIds.clear(); $('preset-modal-overlay').classList.add('hidden'); };
+  $('preset-modal-overlay').onclick = e => { if (e.target === $('preset-modal-overlay')) { presetDetailId = null; presetExportIds.clear(); $('preset-modal-overlay').classList.add('hidden'); } };
 
   // ── Feature 7: Clean backups ──
   $('clean-backups-btn').onclick = async () => {
