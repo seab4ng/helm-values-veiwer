@@ -85,6 +85,21 @@
   .val-row:hover{background:var(--bg3);}
   .val-row.checked{background:var(--accent-dim);}
   .val-row.changed{border-left-color:var(--amber);}
+  .history-btn{opacity:0;font-size:11px;padding:1px 6px;line-height:1.4;flex-shrink:0;margin-left:auto;}
+  .val-row.changed:hover .history-btn,.history-btn:focus{opacity:0.8;}
+  .val-row.changed:hover .history-btn:hover{opacity:1;}
+  #field-history-popup{position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:300;width:300px;max-width:90vw;}
+  #field-history-popup.hidden{display:none;}
+  .fhpop-hdr{padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .fhpop-path{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);}
+  .fhpop-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 2px;line-height:1;flex-shrink:0;}
+  .fhpop-list{max-height:260px;overflow-y:auto;}
+  .fhpop-entry{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);}
+  .fhpop-entry.is-current{background:var(--accent-dim);}
+  .fhpop-entry.is-original{border-left:2px solid var(--amber);}
+  .fhpop-val{font-family:var(--mono);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fhpop-label{font-size:10px;color:var(--text3);white-space:nowrap;}
+  .fhpop-use{font-size:10px;padding:2px 8px;flex-shrink:0;}
   .val-cb{flex-shrink:0;appearance:none;-webkit-appearance:none;width:14px;height:14px;border:1px solid var(--border);border-radius:3px;background:var(--bg3);cursor:pointer;position:relative;top:2px;transition:all 0.1s;align-self:center;}
   .val-cb:checked{background:var(--accent);border-color:var(--accent);}
   .val-cb:checked::after{content:'';position:absolute;left:3px;top:0px;width:5px;height:8px;border:2px solid var(--bg);border-top:none;border-left:none;transform:rotate(45deg);}
@@ -222,6 +237,9 @@
       <div class="modal-body" id="diff-modal-body"></div>
     </div>
   </div>
+
+  <!-- Field history popup -->
+  <div id="field-history-popup" class="hidden"></div>
 
   <!-- Preset modal -->
   <div id="preset-modal-overlay" class="modal-overlay hidden">
@@ -435,6 +453,7 @@
     showChangedOnly: false,
     // Feature 7: backed up files
     backedUpFiles: new Set(), // "chartKey::relPath"
+    fieldHistory: {},         // "chartKey::dotPath" → [{value, display, ts}]
   };
 
   const $ = id => document.getElementById(id);
@@ -719,6 +738,102 @@
     toast(`Preset "${preset.name}" — ${applied} field${applied===1?'':'s'} selected`);
   }
 
+  // ── Field history popup ──
+  let historyPopupKey = null;
+
+  function showHistoryPopup(svKey, btnEl) {
+    if (historyPopupKey === svKey) { closeHistoryPopup(); return; }
+    historyPopupKey = svKey;
+    const sep = svKey.indexOf('::');
+    const chartKey = svKey.slice(0, sep);
+    const dotPath = svKey.slice(sep + 2);
+    const entry = state.charts[chartKey];
+    if (!entry) return;
+    const history = state.fieldHistory[svKey] || [];
+    const currentVal = getNestedVal(entry.values, dotPath);
+    const currentStr = currentVal === null ? 'null' : String(currentVal);
+    const origVal = (state.originalVals[chartKey] || {})[dotPath];
+    const origStr = origVal === null ? 'null' : String(origVal);
+
+    let html = `<div class="fhpop-hdr"><span class="fhpop-path">${esc(dotPath)}</span><button class="fhpop-close" id="fhpop-close-btn">&times;</button></div><div class="fhpop-list">`;
+    html += `<div class="fhpop-entry is-current"><span class="fhpop-val">${esc(currentStr)}</span><span class="fhpop-label">current</span></div>`;
+    for (let i = history.length - 1; i >= 0; i--) {
+      const h = history[i];
+      if (h.display === currentStr) continue;
+      const time = new Date(h.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      html += `<div class="fhpop-entry"><span class="fhpop-val">${esc(h.display)}</span><span class="fhpop-label">${esc(time)}</span><button class="btn btn-primary fhpop-use" data-idx="${i}">↩ Use</button></div>`;
+    }
+    if (origStr !== currentStr) {
+      html += `<div class="fhpop-entry is-original"><span class="fhpop-val">${esc(origStr)}</span><span class="fhpop-label">original</span><button class="btn fhpop-use" data-idx="-1">↩ Use</button></div>`;
+    }
+    html += `</div>`;
+
+    const popup = $('field-history-popup');
+    popup.innerHTML = html;
+    popup.classList.remove('hidden');
+
+    const rect = btnEl.getBoundingClientRect();
+    let left = rect.left, top = rect.bottom + 4;
+    if (left + 310 > window.innerWidth) left = window.innerWidth - 310;
+    if (top + 320 > window.innerHeight) top = rect.top - 320;
+    popup.style.left = Math.max(4, left) + 'px';
+    popup.style.top = Math.max(4, top) + 'px';
+
+    document.getElementById('fhpop-close-btn').onclick = closeHistoryPopup;
+    popup.querySelectorAll('.fhpop-use').forEach(btn => {
+      btn.onclick = e => { e.stopPropagation(); restoreHistoryEntry(svKey, parseInt(btn.dataset.idx)); };
+    });
+  }
+
+  function closeHistoryPopup() {
+    historyPopupKey = null;
+    $('field-history-popup').classList.add('hidden');
+  }
+
+  async function restoreHistoryEntry(svKey, idx) {
+    const sep = svKey.indexOf('::');
+    const chartKey = svKey.slice(0, sep);
+    const dotPath = svKey.slice(sep + 2);
+    const entry = state.charts[chartKey];
+    if (!entry) return;
+
+    let restoreVal, displayStr;
+    if (idx === -1) {
+      restoreVal = (state.originalVals[chartKey] || {})[dotPath];
+      displayStr = restoreVal === null ? 'null' : String(restoreVal);
+    } else {
+      const h = (state.fieldHistory[svKey] || [])[idx];
+      if (!h) return;
+      restoreVal = h.value;
+      displayStr = h.display;
+    }
+
+    try {
+      let fileHandle;
+      if (entry.fileHandle) {
+        fileHandle = entry.fileHandle;
+      } else {
+        const parts = entry.valuesRelPath.split('/');
+        let dir = entry.rootHandle;
+        for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+        fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
+      }
+      const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
+      setNestedPath(obj, dotPath, restoreVal);
+      const writable = await fileHandle.createWritable();
+      await writable.write(jsyaml.dump(obj, {indent: 2, lineWidth: -1}));
+      await writable.close();
+      entry.values = obj;
+      if (idx === -1) delete state.fieldHistory[svKey];
+    } catch (e) { toast('Restore error: ' + e.message, true); return; }
+
+    closeHistoryPopup();
+    updateDiffBadge();
+    updateUndoBtn();
+    renderValues();
+    toast(`Restored "${dotPath}" → ${displayStr}`);
+  }
+
   // ── Feature 6: Revert / Undo all ──
   function anyChangedFields() {
     return state.chartOrder.some(chartKey => {
@@ -787,7 +902,11 @@
         const obj = jsyaml.load(await file.text()) || {};
         const origVals = state.originalVals[chartKey] || {};
         for (const dotPath of dotPaths) {
-          if (dotPath in origVals) { setNestedPath(obj, dotPath, origVals[dotPath]); reverted++; }
+          if (dotPath in origVals) {
+            setNestedPath(obj, dotPath, origVals[dotPath]);
+            delete state.fieldHistory[chartKey + '::' + dotPath];
+            reverted++;
+          }
         }
         const writable = await fileHandle.createWritable();
         await writable.write(jsyaml.dump(obj, { indent: 2, lineWidth: -1 }));
@@ -835,7 +954,11 @@
         const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
         const origVals = state.originalVals[chartKey] || {};
         for (const dotPath of dotPaths) {
-          if (dotPath in origVals) { setNestedPath(obj, dotPath, origVals[dotPath]); reverted++; }
+          if (dotPath in origVals) {
+            setNestedPath(obj, dotPath, origVals[dotPath]);
+            delete state.fieldHistory[chartKey + '::' + dotPath];
+            reverted++;
+          }
         }
         const writable = await fileHandle.createWritable();
         await writable.write(jsyaml.dump(obj, { indent: 2, lineWidth: -1 }));
@@ -1219,6 +1342,9 @@
         html += `<span class="val-path">${pathHtml}</span>`;
         html += `<span class="val-sep">=</span>`;
         html += `<span class="val-val ${e.type}">${valHtml}</span>`;
+        if (changed && state.fieldHistory[svKey]?.length) {
+          html += `<button class="btn history-btn" data-hkey="${esc(svKey)}" title="View field history (${state.fieldHistory[svKey].length} version${state.fieldHistory[svKey].length===1?'':'s'})" onclick="event.preventDefault();event.stopPropagation();">&#128336; ${state.fieldHistory[svKey].length}</button>`;
+        }
         html += `</label>`;
       }
     }
@@ -1248,6 +1374,10 @@
         else { state.selectedVals.delete(svKey); row.classList.remove('checked'); }
         updateBatchBar();
       });
+    });
+
+    box.querySelectorAll('.history-btn').forEach(btn => {
+      btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showHistoryPopup(btn.dataset.hkey, btn); });
     });
 
     queueSync();
@@ -1382,6 +1512,9 @@
           const original = cur != null && typeof cur === 'object' ? cur[keys[keys.length - 1]] : undefined;
           const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
           setNestedPath(obj, dotPath, coerced);
+          const hKey = chartKey + '::' + dotPath;
+          if (!state.fieldHistory[hKey]) state.fieldHistory[hKey] = [];
+          state.fieldHistory[hKey].push({value: coerced, display: yamlMode ? jsyaml.dump(coerced).trim() : String(newValStr), ts: Date.now()});
           totalUpdated++;
         }
 
@@ -1499,6 +1632,13 @@
   $('about-btn').onclick = () => $('about-modal-overlay').classList.remove('hidden');
   $('about-close').onclick = () => $('about-modal-overlay').classList.add('hidden');
   $('about-modal-overlay').onclick = e => { if (e.target === $('about-modal-overlay')) $('about-modal-overlay').classList.add('hidden'); };
+
+  document.addEventListener('click', e => {
+    if (historyPopupKey && !$('field-history-popup').contains(e.target)) closeHistoryPopup();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && historyPopupKey) closeHistoryPopup();
+  });
 
   renderTree();
   renderValues();
