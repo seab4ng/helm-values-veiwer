@@ -100,16 +100,15 @@
   .empty{color:var(--text2);font-size:14px;text-align:center;padding:3rem 1rem;}
   .empty span{display:block;font-size:28px;margin-bottom:6px;opacity:0.4;}
 
-  /* Copy-to-all hover button */
+  /* Copy-to-all button — always visible when path exists in multiple charts */
   .val-copy-btn{
-    display:none;flex-shrink:0;margin-left:auto;
+    display:inline-flex;flex-shrink:0;margin-left:auto;
     font-size:10px;padding:1px 6px;border-radius:4px;
     background:var(--bg4);border:1px solid var(--border);color:var(--text3);
     cursor:pointer;font-family:var(--font);white-space:nowrap;
     transition:all 0.1s;
   }
-  .val-row:hover .val-copy-btn{display:inline-flex;}
-  .val-copy-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .val-copy-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 
   .btn{font-family:var(--font);font-size:12px;font-weight:500;padding:6px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;transition:all 0.15s;}
   .btn:hover{border-color:var(--accent);color:var(--accent);}
@@ -529,6 +528,7 @@
 
   // ── Feature 5: Presets (localStorage) ──
   const PRESETS_KEY = 'helm-editor-presets';
+  let presetDetailId = null; // which preset is showing its field detail
 
   function loadPresets() {
     try { return JSON.parse(localStorage.getItem(PRESETS_KEY) || '[]'); } catch { return []; }
@@ -551,12 +551,28 @@
     } else {
       html += '<div class="preset-list">';
       for (const p of presets) {
-        html += `<div class="preset-item">
+        const isDetailed = presetDetailId === p.id;
+      html += `<div class="preset-item">
           <span class="preset-name">${esc(p.name)}</span>
           <span class="preset-meta">${p.entries.length} field${p.entries.length===1?'':'s'}</span>
+          <button class="btn${isDetailed?' btn-primary':''}" style="font-size:11px;padding:3px 8px;" data-detail-preset="${esc(p.id)}" title="Show fields in this preset">&#128269;</button>
           <button class="btn btn-primary" style="font-size:11px;padding:3px 10px;" data-apply-preset="${esc(p.id)}">Apply</button>
           <button class="btn btn-danger" style="font-size:11px;padding:3px 8px;" data-del-preset="${esc(p.id)}">&times;</button>
         </div>`;
+      if (isDetailed) {
+        html += `<div style="background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin:0 0 6px;font-family:var(--mono);font-size:12px;">`;
+        if (!p.entries.length) {
+          html += `<span style="color:var(--text3);">No fields saved.</span>`;
+        } else {
+          for (const e of p.entries) {
+            html += `<div style="display:flex;gap:10px;padding:2px 0;border-bottom:1px solid var(--border);">`;
+            html += `<span style="color:var(--text2);flex:1;">${esc(e.dotPath)}</span>`;
+            if (e.value) html += `<span style="color:var(--amber);">${esc(e.value)}</span>`;
+            html += `</div>`;
+          }
+        }
+        html += `</div>`;
+      }
       }
       html += '</div>';
     }
@@ -573,6 +589,14 @@
       html += `<div style="font-size:11px;color:var(--amber);margin-top:4px;">Tip: fill in a value before saving to include it in the preset.</div>`;
     }
     $('preset-modal-body').innerHTML = html;
+
+    // Detail (field list) buttons
+    $('preset-modal-body').querySelectorAll('[data-detail-preset]').forEach(btn => {
+      btn.onclick = () => {
+        presetDetailId = presetDetailId === btn.dataset.detailPreset ? null : btn.dataset.detailPreset;
+        renderPresetModal();
+      };
+    });
 
     // Apply preset buttons
     $('preset-modal-body').querySelectorAll('[data-apply-preset]').forEach(btn => {
@@ -648,10 +672,31 @@
       const writable = await frame.fileHandle.createWritable();
       await writable.write(frame.prevContent);
       await writable.close();
-      // Re-parse in-memory
       const entry = state.charts[frame.chartKey];
       if (entry) {
         entry.values = jsyaml.load(frame.prevContent) || {};
+        // Reconcile sessionDiffs for each undone path
+        const orig = state.originalVals[frame.chartKey] || {};
+        for (const dotPath of frame.dotPaths) {
+          const curVal = getNestedVal(entry.values, dotPath);
+          const curStr = String(curVal === null ? 'null' : (curVal ?? ''));
+          if (orig[dotPath] === curStr) {
+            // Back to original — remove all diff entries for this path
+            state.sessionDiffs = state.sessionDiffs.filter(
+              d => !(d.chartKey === frame.chartKey && d.dotPath === dotPath)
+            );
+          } else {
+            // Still different from original — update the last diff entry's newVal
+            for (let i = state.sessionDiffs.length - 1; i >= 0; i--) {
+              const d = state.sessionDiffs[i];
+              if (d.chartKey === frame.chartKey && d.dotPath === dotPath) {
+                d.newVal = curStr;
+                break;
+              }
+            }
+          }
+        }
+        updateDiffBadge();
       }
       toast(`Undone: ${frame.label}`);
       updateUndoBtn();
@@ -1254,8 +1299,8 @@
 
   // ── Feature 5: Presets ──
   $('presets-btn').onclick = showPresetModal;
-  $('preset-modal-close').onclick = () => $('preset-modal-overlay').classList.add('hidden');
-  $('preset-modal-overlay').onclick = e => { if (e.target === $('preset-modal-overlay')) $('preset-modal-overlay').classList.add('hidden'); };
+  $('preset-modal-close').onclick = () => { presetDetailId = null; $('preset-modal-overlay').classList.add('hidden'); };
+  $('preset-modal-overlay').onclick = e => { if (e.target === $('preset-modal-overlay')) { presetDetailId = null; $('preset-modal-overlay').classList.add('hidden'); } };
 
   // ── Feature 7: Clean backups ──
   $('clean-backups-btn').onclick = async () => {
