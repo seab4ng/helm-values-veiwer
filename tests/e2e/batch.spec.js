@@ -18,8 +18,7 @@ test('selecting two string fields and applying succeeds', async ({ page }) => {
   await page.locator('.val-row', { hasText: 'image.tag' }).locator('input[type=checkbox]').check();
   await page.fill('#new-val', 'testvalue');
   await page.click('#apply-btn');
-  // success toast has no .err class
-  await expect(page.locator('#toast-area .toast:not(.err)')).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' })).toBeVisible({ timeout: 3000 });
 });
 
 test('mixing string and list fields shows Mixed selection error', async ({ page }) => {
