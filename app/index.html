@@ -756,7 +756,11 @@
         const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
         for (const {dotPath, value} of patches) {
           const origVal = getNestedVal(obj, dotPath);
-          setNestedPath(obj, dotPath, coerceValue(value, origVal));
+          const coerced = coerceValue(value, origVal);
+          setNestedPath(obj, dotPath, coerced);
+          const hKey = chartKey + '::' + dotPath;
+          if (!state.fieldHistory[hKey]) state.fieldHistory[hKey] = [];
+          state.fieldHistory[hKey].push({value: coerced, display: value, ts: Date.now()});
           totalUpdated++;
         }
         const writable = await fileHandle.createWritable();
