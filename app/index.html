@@ -100,15 +100,6 @@
   .empty{color:var(--text2);font-size:14px;text-align:center;padding:3rem 1rem;}
   .empty span{display:block;font-size:28px;margin-bottom:6px;opacity:0.4;}
 
-  /* Copy-to-all button — always visible when path exists in multiple charts */
-  .val-copy-btn{
-    display:inline-flex;flex-shrink:0;margin-left:auto;
-    font-size:10px;padding:1px 6px;border-radius:4px;
-    background:var(--bg4);border:1px solid var(--border);color:var(--text3);
-    cursor:pointer;font-family:var(--font);white-space:nowrap;
-    transition:all 0.1s;
-  }
-  .val-copy-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 
   .btn{font-family:var(--font);font-size:12px;font-weight:500;padding:6px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;transition:all 0.15s;}
   .btn:hover{border-color:var(--accent);color:var(--accent);}
@@ -1046,16 +1037,6 @@
         html += `<span class="val-path">${pathHtml}</span>`;
         html += `<span class="val-sep">=</span>`;
         html += `<span class="val-val ${e.type}">${valHtml}</span>`;
-        // Feature 4: copy-to-all button (only if multiple charts loaded)
-        if (state.chartOrder.length > 1 && canCheck) {
-          const countWithPath = state.chartOrder.filter(ck => {
-            const ce = state.charts[ck];
-            return ce && ce.values && getNestedVal(ce.values, e.path) !== undefined;
-          }).length;
-          if (countWithPath > 1) {
-            html += `<button class="val-copy-btn" data-path="${esc(e.path)}" data-val="${esc(valDisplay)}" title="Select '${esc(e.path)}' in all ${countWithPath} charts">&#8681; ${countWithPath} charts</button>`;
-          }
-        }
         html += `</label>`;
       }
     }
@@ -1084,30 +1065,6 @@
         if (cb.checked) { state.selectedVals.add(svKey); row.classList.add('checked'); }
         else { state.selectedVals.delete(svKey); row.classList.remove('checked'); }
         updateBatchBar();
-      });
-    });
-
-    // Feature 4: copy-to-all click
-    box.querySelectorAll('.val-copy-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        const dotPath = btn.dataset.path;
-        const val = btn.dataset.val;
-        let count = 0;
-        for (const chartKey of state.chartOrder) {
-          const ce = state.charts[chartKey];
-          if (!ce || !ce.values || !ce.rootHandle && !ce.fileHandle) continue;
-          if (getNestedVal(ce.values, dotPath) !== undefined) {
-            state.selectedVals.add(chartKey + '::' + dotPath);
-            count++;
-          }
-        }
-        $('new-val').value = val;
-        setYamlMode(false);
-        updateBatchBar();
-        renderValues();
-        toast(`Selected "${dotPath}" in ${count} chart${count===1?'':'s'}`);
       });
     });
 
