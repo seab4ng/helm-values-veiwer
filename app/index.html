@@ -18,7 +18,7 @@
     --radius:8px;
   }
   body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;line-height:1.5;}
-  .shell{max-width:1200px;margin:0 auto;padding:1.5rem;}
+  .shell{max-width:1440px;margin:0 auto;padding:1.5rem;}
 
   .hdr{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);justify-content:space-between;}
   .hdr-icon{width:38px;height:38px;background:var(--accent-dim);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
@@ -88,6 +88,7 @@
   .history-btn{opacity:0;font-size:11px;padding:1px 6px;line-height:1.4;flex-shrink:0;margin-left:auto;}
   .val-row.changed:hover .history-btn,.history-btn:focus{opacity:0.8;}
   .val-row.changed:hover .history-btn:hover{opacity:1;}
+  #val-tooltip{position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.5);z-index:500;padding:6px 10px;font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--text);max-width:700px;word-break:break-all;pointer-events:none;display:none;}
   #field-history-popup{position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:300;width:300px;max-width:90vw;}
   #field-history-popup.hidden{display:none;}
   .fhpop-hdr{padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px;}
@@ -103,9 +104,9 @@
   .val-cb{flex-shrink:0;appearance:none;-webkit-appearance:none;width:14px;height:14px;border:1px solid var(--border);border-radius:3px;background:var(--bg3);cursor:pointer;position:relative;top:2px;transition:all 0.1s;align-self:center;}
   .val-cb:checked{background:var(--accent);border-color:var(--accent);}
   .val-cb:checked::after{content:'';position:absolute;left:3px;top:0px;width:5px;height:8px;border:2px solid var(--bg);border-top:none;border-left:none;transform:rotate(45deg);}
-  .val-path{color:var(--text2);word-break:break-all;}
+  .val-path{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:1;min-width:60px;}
   .val-sep{color:var(--text3);flex-shrink:0;margin:0 2px;}
-  .val-val{word-break:break-all;}
+  .val-val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:60px;}
   .val-val.str{color:var(--amber);}
   .val-val.num{color:var(--green);}
   .val-val.bool{color:var(--purple);}
@@ -223,6 +224,7 @@
       <p class="about-sub">Chart dependency tree + searchable values editor</p>
       <div class="about-row"><span class="about-lbl">Maintainer</span><span class="about-val">Yakir Veneci</span></div>
       <div class="about-row"><span class="about-lbl">GitHub</span><a class="about-link" href="https://github.com/seab4ng" target="_blank" rel="noopener">seab4ng</a></div>
+      <div class="about-row"><span class="about-lbl">Repo</span><a class="about-link" href="https://github.com/seab4ng/helm-values-editor" target="_blank" rel="noopener">helm-values-editor</a></div>
       <div class="about-row"><span class="about-lbl">Version</span><span class="about-val" style="font-family:var(--mono);font-size:12px;">__APP_VERSION__</span></div>
     </div>
   </div>
@@ -323,6 +325,7 @@
 </div>
 
 <div class="toast-area" id="toast-area"></div>
+<div id="val-tooltip"></div>
 
 <script src="/vendor/js-yaml.min.js"></script>
 <script src="lib.js"></script>
@@ -342,10 +345,14 @@
   }
 
   function coerceValue(str, original) {
-    if (typeof original === 'number') { const n = Number(str); return isNaN(n) ? str : n; }
-    if (typeof original === 'boolean') { if (str === 'true') return true; if (str === 'false') return false; return str; }
-    if (original === null && str === 'null') return null;
-    return str;
+    const s = str.trim();
+    if ((s.startsWith("'") && s.endsWith("'") && s.length >= 2) ||
+        (s.startsWith('"') && s.endsWith('"') && s.length >= 2)) return s.slice(1, -1);
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+    if (s === 'null') return null;
+    if (typeof original === 'number') { const n = Number(s); return isNaN(n) ? s : n; }
+    return s;
   }
 
   function getNestedVal(obj, dotPath) {
@@ -1378,7 +1385,7 @@
         const pathHtml = query ? highlight(e.path, query) : esc(e.path);
         const valDisplay = e.val === null ? 'null' : e.val;
         const valHtml = query ? highlight(valDisplay, query) : esc(valDisplay);
-        html += `<label class="val-row${isChecked ? ' checked' : ''}${changed ? ' changed' : ''}" data-key="${esc(svKey)}">`;
+        html += `<label class="val-row${isChecked ? ' checked' : ''}${changed ? ' changed' : ''}" data-key="${esc(svKey)}" data-tip="${esc(e.path + ' = ' + String(valDisplay) + '  [' + (e.type==='arr'?(valDisplay==='{}'?'map':'list'):e.type==='str'?'string':e.type==='num'?'number':e.type) + ']')}">`;
         html += `<input type="checkbox" class="val-cb"${isChecked ? ' checked' : ''}${!canCheck ? ' disabled title="Read-only file"' : ''}>`;
         html += `<span class="val-path">${pathHtml}</span>`;
         html += `<span class="val-sep">=</span>`;
@@ -1421,7 +1428,30 @@
       btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showHistoryPopup(btn.dataset.hkey, btn); });
     });
 
+    const tip = $('val-tooltip');
+    box.querySelectorAll('.val-row[data-tip]').forEach(row => {
+      row.addEventListener('mouseenter', ev => {
+        tip.textContent = row.dataset.tip;
+        tip.style.display = 'block';
+        positionTip(ev);
+      });
+      row.addEventListener('mousemove', positionTip);
+      row.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    });
+
+    autoSizeValuesPanel();
     queueSync();
+  }
+
+  function positionTip(ev) {
+    const tip = $('val-tooltip');
+    const margin = 12;
+    let x = ev.clientX + margin, y = ev.clientY + margin;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    if (x + tw > window.innerWidth - 8) x = ev.clientX - tw - margin;
+    if (y + th > window.innerHeight - 8) y = ev.clientY - th - margin;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
   }
 
   function updateBatchBar() {
@@ -1466,7 +1496,7 @@
   };
 
   $('apply-btn').onclick = async () => {
-    const newValStr = yamlMode ? $('yaml-val').value.trim() : $('new-val').value;
+    const newValStr = yamlMode ? $('yaml-val').value.trim() : $('new-val').value.trim();
     if (!newValStr && newValStr !== '0') { toast('Enter a new value first', true); return; }
     if (state.selectedVals.size === 0) { toast('No values selected', true); return; }
 

@@ -127,17 +127,14 @@ const HelmLib=(function(){
 
   // Coerce string input to match original value type
   function coerceValue(str, original) {
-    if (typeof original === 'number') {
-      const n = Number(str);
-      return isNaN(n) ? str : n;
-    }
-    if (typeof original === 'boolean') {
-      if (str === 'true') return true;
-      if (str === 'false') return false;
-      return str;
-    }
-    if (original === null && str === 'null') return null;
-    return str;
+    const s = str.trim();
+    if ((s.startsWith("'") && s.endsWith("'") && s.length >= 2) ||
+        (s.startsWith('"') && s.endsWith('"') && s.length >= 2)) return s.slice(1, -1);
+    if (s === 'true') return true;
+    if (s === 'false') return false;
+    if (s === 'null') return null;
+    if (typeof original === 'number') { const n = Number(s); return isNaN(n) ? s : n; }
+    return s;
   }
 
   // Get value at dot-path in object (read-only, returns undefined if missing)
