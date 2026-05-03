@@ -344,10 +344,15 @@
   }
 
   function coerceValue(str, original) {
-    if (typeof original === 'number') { const n = Number(str); return isNaN(n) ? str : n; }
-    if (typeof original === 'boolean') { if (str === 'true') return true; if (str === 'false') return false; return str; }
-    if (original === null && str === 'null') return null;
-    return str;
+    const s = str.trim();
+    if (typeof original === 'number') { const n = Number(s); return isNaN(n) ? s : n; }
+    if (typeof original === 'boolean' || original === 'true' || original === 'false') {
+      if (s === 'true') return true;
+      if (s === 'false') return false;
+      return s;
+    }
+    if ((original === null || original === 'null') && s === 'null') return null;
+    return s;
   }
 
   function getNestedVal(obj, dotPath) {
@@ -1491,7 +1496,7 @@
   };
 
   $('apply-btn').onclick = async () => {
-    const newValStr = yamlMode ? $('yaml-val').value.trim() : $('new-val').value;
+    const newValStr = yamlMode ? $('yaml-val').value.trim() : $('new-val').value.trim();
     if (!newValStr && newValStr !== '0') { toast('Enter a new value first', true); return; }
     if (state.selectedVals.size === 0) { toast('No values selected', true); return; }
 
