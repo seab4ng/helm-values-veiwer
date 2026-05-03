@@ -396,8 +396,8 @@ describe('coerceValue: additional cases', () => {
     assert.equal(coerceValue('', 'hello'), '');
   });
 
-  test('"null" with string original returns string "null"', () => {
-    assert.equal(coerceValue('null', 'something'), 'null');
+  test('"null" input always returns null regardless of original type', () => {
+    assert.equal(coerceValue('null', 'something'), null);
   });
 
   test('"maybe" with boolean original falls back to string', () => {
