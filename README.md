@@ -2,6 +2,7 @@
 
 [![Docker Hub](https://img.shields.io/docker/v/sokushinbutsu/helm-values-editor?sort=semver&label=docker&logo=docker)](https://hub.docker.com/r/sokushinbutsu/helm-values-editor)
 [![GitHub](https://img.shields.io/badge/github-helm--values--editor-blue?logo=github)](https://github.com/seab4ng/helm-values-editor)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A browser-based editor for Helm chart `values.yaml` files. Open a chart folder, search for any field, change values, and save back to disk — no terminal needed.
 
