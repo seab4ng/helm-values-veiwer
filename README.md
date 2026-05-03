@@ -1,28 +1,13 @@
 # Helm Values Editor
 
 [![Docker Hub](https://img.shields.io/docker/v/sokushinbutsu/helm-values-editor?sort=semver&label=docker&logo=docker)](https://hub.docker.com/r/sokushinbutsu/helm-values-editor)
+[![GitHub](https://img.shields.io/badge/github-helm--values--editor-blue?logo=github)](https://github.com/seab4ng/helm-values-editor)
 
-A browser-based editor for Helm chart values files. Load a chart folder or standalone values.yaml, search across all keys and nested fields, select values to change, and write the new values back to disk — without touching the terminal.
+A browser-based editor for Helm chart `values.yaml` files. Open a chart folder, search for any field, change values, and save back to disk — no terminal needed.
 
-## Features
+> **Requires Chrome or Edge** (uses the browser's File System Access API to read and write files).
 
-- Load a Helm chart folder (with subchart tree) or a single values.yaml
-- Full-text search across all keys and values at any nesting depth
-- Select multiple fields and batch-edit them to a new value
-- YAML mode for editing list and map fields
-- Changes write back to the actual files on disk (File System Access API)
-- Session persistence — reopen the browser and restore your loaded charts
-- Fully airgapped — no external network calls at runtime
-- **Session changes badge**: An amber "N changes" badge appears in the values panel header when fields differ from their original load-time values. Click it to open a before/after diff table grouped by chart.
-- **Changed field highlight + filter**: Changed fields show an amber left border. Click **Changed** to filter and show only changed fields; the filter auto-exits when no changed fields remain.
-- **Presets**: Click **Presets** to open the preset manager. Save the current field selection (with an optional prefilled value) as a named preset and apply it across all loaded charts. Click the magnifying-glass button on a preset to inspect which fields it contains.
-- **Revert selected / Undo all**: Select any changed fields and click **↩ Revert selected** to restore only those fields to their original load-time values. With nothing selected, **↩ Undo all** appears and reverts every changed field across every loaded chart simultaneously.
-- **Auto-backup (.bak)**: Before the first write to any values.yaml the app creates a `values.bak` file in the same directory. Existing `.bak` files are detected on chart load. Click **Clean backups** in the left panel to delete all `.bak` files created or detected this session.
-
-## Requirements
-
-- Chrome or Edge (File System Access API required for folder/file access)
-- Docker (to run the container) or any static file server
+---
 
 ## Quick start
 
@@ -30,25 +15,139 @@ A browser-based editor for Helm chart values files. Load a chart folder or stand
 docker run -p 8080:8080 sokushinbutsu/helm-values-editor:latest
 ```
 
-Open http://localhost:8080 in Chrome or Edge.
+Open **http://localhost:8080** in Chrome or Edge.
+
+---
 
 ## Usage
 
-1. Click **+ Add chart folder** and select a Helm chart directory. The app scans Chart.yaml and values.yaml recursively across all subcharts.
-2. Or click **+ Add YAML file** to load a single values.yaml.
-3. Use the search box to find any key or value across all loaded charts.
-4. Check the boxes next to the fields you want to change.
-5. Type a new value and click **Apply to selected fields**.
-   - For string, number, or boolean fields: type the value directly.
-   - For list or map fields: click **YAML** to switch to YAML input mode (e.g. `[80, 443]` or `key: value`).
-6. Changes are written back to the files on disk immediately. A `.bak` file is created automatically alongside the first write to each values.yaml.
-7. An amber **N changes** badge appears in the values panel header. Click it to review a full before/after diff table grouped by chart.
-8. Changed fields are highlighted with an amber left border. Click **Changed** to filter the list to only those fields.
-9. To revert: check the fields you want to restore and click **↩ Revert selected**. With nothing checked, click **↩ Undo all** to revert every changed field across all loaded charts at once.
-10. Click **Presets** to save the current field selection as a named preset (with an optional default value). Apply saved presets to all loaded charts in one click.
-11. Click **Clean backups** in the left panel to delete all `.bak` files created or detected this session.
+### 1. Load a chart
 
-> Note: mixing field types (strings, lists, maps) in the same batch is not allowed. Select one type at a time.
+Click **+ Add chart folder** and pick your Helm chart directory.
+The app reads `Chart.yaml` and `values.yaml` from the root chart and all subcharts automatically.
+
+> Don't have a full chart? Click **+ Add YAML file** to load a single `values.yaml`.
+
+The left panel shows the chart tree. Click any chart name to view its fields.
+
+---
+
+### 2. Find fields
+
+Use the search box to filter fields by name or value.
+
+```
+Search: "replica"  →  shows replicaCount, autoscaling.minReplicas, etc.
+```
+
+Hover over any field row to see the full path and value in a popup (useful for long lines).
+
+---
+
+### 3. Change values
+
+1. Check the box next to one or more fields.
+2. A bar appears at the top of the values panel.
+3. Type the new value and click **Apply**.
+
+```
+Field: replicaCount   Current: 1
+→ check box, type "3", click Apply  →  saved as number 3
+```
+
+**Type rules:**
+| You type | Saved as |
+|---|---|
+| `3` (for a number field) | number `3` |
+| `true` or `false` | boolean |
+| `null` | null |
+| `'false'` or `"false"` (quoted) | string `false` |
+| anything else | string |
+
+For **list** or **map** fields, click **YAML** to switch to YAML input mode:
+```yaml
+# list example
+- nginx
+- alpine
+
+# map example
+app: frontend
+env: production
+```
+
+> You can select multiple fields and apply the same value to all of them at once.
+> Mixing field types (e.g. a string field + a list field) in the same batch is not allowed — select one type at a time.
+
+---
+
+### 4. Review and revert changes
+
+**Changed fields** get an amber left border so they stand out.
+
+- Click **Changed** to filter the list and show only changed fields.
+- Click the amber **N changes** badge to open a full before/after diff table.
+- Click the clock icon on any changed field to see its full edit history.
+
+**To undo:**
+- Select specific fields → click **↩ Revert selected** to restore only those.
+- Select nothing → click **↩ Undo all** to restore every changed field across all loaded charts.
+
+---
+
+### 5. Presets
+
+Presets let you save a group of fields (with an optional prefilled value) and apply them in one click — useful for fields you change often.
+
+**Save a preset:**
+1. Check the fields you want to include.
+2. *(Optional)* Type a default value in the new-value box.
+3. Click **Presets** → enter a name → click **Save**.
+
+**Apply a preset:**
+1. Click **Presets**.
+2. Click **Apply** next to the preset name.
+   All preset fields get selected and, if a value was saved, it's filled in automatically.
+
+Click the magnifying-glass icon on a preset to see which fields it contains. Click the trash icon to delete it.
+
+---
+
+### 6. Backups and cleanup
+
+Before the **first write** to any `values.yaml`, the app automatically creates a `values.bak` file in the same folder.
+
+If you want to remove all backup files created this session, click **Clean backups** in the left panel.
+
+---
+
+### 7. Session restore
+
+If you close and reopen the browser, a banner offers to restore your previously loaded charts. Click **Restore session** to reload them without picking folders again.
+
+---
+
+## Features at a glance
+
+| Feature | Description |
+|---|---|
+| Chart folder + subchart tree | Loads root chart and all subcharts in one go |
+| Single YAML file | Load any `values.yaml` without a full chart |
+| Full-text search | Filter fields by key or value at any nesting depth |
+| Batch edit | Select multiple fields, type once, apply to all |
+| YAML mode | Edit list and map fields using raw YAML syntax |
+| Type coercion | Booleans, numbers, nulls saved with correct YAML types |
+| Quoted string override | Wrap value in `'...'` or `"..."` to force string type |
+| Changed highlight + filter | Amber border on changed fields; filter to show only them |
+| Diff view | Before/after table for all changes grouped by chart |
+| Field history | Per-field edit history with one-click restore |
+| Revert selected / Undo all | Restore any field or all fields to original values |
+| Presets | Save and apply named field selections across charts |
+| Auto-backup | Creates `.bak` before first write; clean up in one click |
+| Session persistence | Restore previously loaded charts on next open |
+| Hover tooltip | Full path + value popup for long/truncated fields |
+| Fully airgapped | No external network calls at runtime |
+
+---
 
 ## Environment variables
 
@@ -56,10 +155,11 @@ Open http://localhost:8080 in Chrome or Edge.
 |---|---|---|
 | `APP_VERSION` | tag at build time | Version shown in the About dialog |
 
-Example with custom values:
 ```bash
-docker run -p 8080:8080 -e APP_VERSION="2.1.0" sokushinbutsu/helm-values-editor:latest
+docker run -p 8080:8080 -e APP_VERSION="1.0.7" sokushinbutsu/helm-values-editor:latest
 ```
+
+---
 
 ## Build from source
 
@@ -70,37 +170,38 @@ docker build -t helm-values-editor .
 docker run -p 8080:8080 helm-values-editor
 ```
 
-## Run tests
+---
 
-No dependencies required. Tests use Node.js built-in test runner.
+## Run tests
 
 ```bash
 node --test tests/unit.js
 ```
 
-Test results are also published to GitHub Actions on every release.
+---
 
 ## CI / CD
 
 A GitHub Actions workflow runs on every version tag (`v*`):
 
-1. Runs the full unit test suite and publishes results to the Actions check run.
+1. Runs the full unit test suite.
 2. If tests pass, builds the Docker image and pushes to Docker Hub as `sokushinbutsu/helm-values-editor:<tag>` and `latest`.
 
-To release a new version, create a tag:
+To release:
 ```bash
 git tag v1.2.3
 git push origin v1.2.3
 ```
 
-Required repository secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
+Required secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
+
+---
 
 ## Contributing
 
-- `app/index.html` — all frontend logic (single IIFE, no build step)
-- `app/lib.js` — pure utility functions (flatten, highlight, buildChartTree, etc.)
+- `app/index.html` — all frontend logic (single file, no build step)
+- `app/lib.js` — pure utility functions (flatten, coerce, search, chart tree)
 - `tests/unit.js` — unit tests for lib.js
 - `Dockerfile` — two-stage build: node for vendoring js-yaml, nginx for serving
-- `nginx.conf` — static file serving config
 
-Fork the repo, make changes, run `node --test tests/unit.js`, open a PR.
+Fork, make changes, run tests, open a PR.
