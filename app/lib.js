@@ -128,6 +128,8 @@ const HelmLib=(function(){
   // Coerce string input to match original value type
   function coerceValue(str, original) {
     const s = str.trim();
+    if ((s.startsWith("'") && s.endsWith("'") && s.length >= 2) ||
+        (s.startsWith('"') && s.endsWith('"') && s.length >= 2)) return s.slice(1, -1);
     if (s === 'true') return true;
     if (s === 'false') return false;
     if (s === 'null') return null;
