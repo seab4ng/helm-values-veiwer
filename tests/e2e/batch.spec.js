@@ -26,8 +26,8 @@ test('mixing string and list fields shows Mixed selection error', async ({ page 
   await page.locator('.val-row', { hasText: 'imagePullSecrets' }).locator('input[type=checkbox]').check();
   await page.fill('#new-val', 'anything');
   await page.click('#apply-btn');
-  await expect(page.locator('#toast-area .toast.err')).toBeVisible({ timeout: 3000 });
-  await expect(page.locator('#toast-area .toast.err')).toContainText('Mixed selection');
+  await expect(page.locator('#toast-area .toast.err').first()).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast.err').first()).toContainText('Mixed selection');
 });
 
 test('mixing string and map fields shows Mixed selection error', async ({ page }) => {
@@ -35,8 +35,8 @@ test('mixing string and map fields shows Mixed selection error', async ({ page }
   await page.locator('.val-row', { hasText: 'nodeSelector' }).locator('input[type=checkbox]').check();
   await page.fill('#new-val', 'anything');
   await page.click('#apply-btn');
-  await expect(page.locator('#toast-area .toast.err')).toBeVisible({ timeout: 3000 });
-  await expect(page.locator('#toast-area .toast.err')).toContainText('Mixed selection');
+  await expect(page.locator('#toast-area .toast.err').first()).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast.err').first()).toContainText('Mixed selection');
 });
 
 test('deselecting all fields hides batch bar', async ({ page }) => {

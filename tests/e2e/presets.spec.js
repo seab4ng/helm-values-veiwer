@@ -82,22 +82,20 @@ test('detail button toggle hides field list on second click', async ({ page }) =
   await expect(page.locator('#preset-modal-body')).not.toContainText('replicaCount');
 });
 
-test('applying a preset selects fields and shows batch bar', async ({ page }) => {
+test('applying a preset writes fields and shows Applied toast', async ({ page }) => {
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#presets-btn');
   await page.fill('#preset-name-input', 'Apply Test');
   await page.click('#preset-save-btn');
 
-  // Clear selection, then apply preset
   await page.click('#preset-modal-close');
   await page.click('#clear-sel-btn');
-  await expect(page.locator('#batch-bar')).toHaveClass(/hidden/);
 
   await page.click('#presets-btn');
   await page.locator('[data-apply-preset]').first().click();
-  // applyPreset auto-closes the modal
+  // applyPreset writes to disk and shows "Applied" toast
 
-  await expect(page.locator('#batch-bar')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#toast-area .toast', { hasText: 'Applied' }).first()).toBeVisible({ timeout: 5000 });
 });
 
 test('applying preset with prefilled value fills new-val input', async ({ page }) => {
