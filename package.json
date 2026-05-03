@@ -1,8 +1,25 @@
 {
   "name": "helm-values-editor",
-  "version": "1.0.0",
+  "version": "1.0.7",
+  "description": "Browser-based editor for Helm chart values files — search, batch-edit, and write back to disk without a terminal.",
+  "homepage": "https://github.com/seab4ng/helm-values-editor",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seab4ng/helm-values-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/seab4ng/helm-values-editor/issues"
+  },
+  "license": "MIT",
   "private": true,
-  "description": "Vendored browser deps for helm-values-editor (served locally for airgapped environments).",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "npx serve app -p 3000",
+    "test": "node --test tests/unit.js",
+    "test:e2e": "npx playwright test"
+  },
   "dependencies": {
     "js-yaml": "4.1.1"
   },

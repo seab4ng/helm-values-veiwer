@@ -1,0 +1,22 @@
+---
+name: Bug report
+about: Something is broken
+labels: bug
+---
+
+**Describe the bug**
+<!-- What happened? What did you expect? -->
+
+**Steps to reproduce**
+1. 
+2. 
+3. 
+
+**Browser**
+<!-- Chrome / Edge, version -->
+
+**App version**
+<!-- Check the About dialog -->
+
+**Additional context**
+<!-- Screenshots, console errors, etc. -->
