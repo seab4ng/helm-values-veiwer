@@ -1378,7 +1378,7 @@
         const pathHtml = query ? highlight(e.path, query) : esc(e.path);
         const valDisplay = e.val === null ? 'null' : e.val;
         const valHtml = query ? highlight(valDisplay, query) : esc(valDisplay);
-        html += `<label class="val-row${isChecked ? ' checked' : ''}${changed ? ' changed' : ''}" data-key="${esc(svKey)}" title="${esc(e.path + ' = ' + String(valDisplay))}">`;
+        html += `<label class="val-row${isChecked ? ' checked' : ''}${changed ? ' changed' : ''}" data-key="${esc(svKey)}" title="${esc(e.path + ' = ' + String(valDisplay) + '  [' + e.type + ']')}">`;
         html += `<input type="checkbox" class="val-cb"${isChecked ? ' checked' : ''}${!canCheck ? ' disabled title="Read-only file"' : ''}>`;
         html += `<span class="val-path">${pathHtml}</span>`;
         html += `<span class="val-sep">=</span>`;
