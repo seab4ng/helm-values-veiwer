@@ -88,6 +88,7 @@
   .history-btn{opacity:0;font-size:11px;padding:1px 6px;line-height:1.4;flex-shrink:0;margin-left:auto;}
   .val-row.changed:hover .history-btn,.history-btn:focus{opacity:0.8;}
   .val-row.changed:hover .history-btn:hover{opacity:1;}
+  #val-tooltip{position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.5);z-index:500;padding:6px 10px;font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--text);max-width:700px;word-break:break-all;pointer-events:none;display:none;}
   #field-history-popup{position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:300;width:300px;max-width:90vw;}
   #field-history-popup.hidden{display:none;}
   .fhpop-hdr{padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:8px;}
@@ -323,6 +324,7 @@
 </div>
 
 <div class="toast-area" id="toast-area"></div>
+<div id="val-tooltip"></div>
 
 <script src="/vendor/js-yaml.min.js"></script>
 <script src="lib.js"></script>
@@ -1378,7 +1380,7 @@
         const pathHtml = query ? highlight(e.path, query) : esc(e.path);
         const valDisplay = e.val === null ? 'null' : e.val;
         const valHtml = query ? highlight(valDisplay, query) : esc(valDisplay);
-        html += `<label class="val-row${isChecked ? ' checked' : ''}${changed ? ' changed' : ''}" data-key="${esc(svKey)}" title="${esc(e.path + ' = ' + String(valDisplay) + '  [' + (e.type==='arr'?(valDisplay==='{}'?'map':'list'):e.type==='str'?'string':e.type==='num'?'number':e.type==='bool'?'boolean':e.type) + ']')}">`;
+        html += `<label class="val-row${isChecked ? ' checked' : ''}${changed ? ' changed' : ''}" data-key="${esc(svKey)}" data-tip="${esc(e.path + ' = ' + String(valDisplay) + '  [' + (e.type==='arr'?(valDisplay==='{}'?'map':'list'):e.type==='str'?'string':e.type==='num'?'number':e.type) + ']')}">`;
         html += `<input type="checkbox" class="val-cb"${isChecked ? ' checked' : ''}${!canCheck ? ' disabled title="Read-only file"' : ''}>`;
         html += `<span class="val-path">${pathHtml}</span>`;
         html += `<span class="val-sep">=</span>`;
@@ -1421,7 +1423,30 @@
       btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showHistoryPopup(btn.dataset.hkey, btn); });
     });
 
+    const tip = $('val-tooltip');
+    box.querySelectorAll('.val-row[data-tip]').forEach(row => {
+      row.addEventListener('mouseenter', ev => {
+        tip.textContent = row.dataset.tip;
+        tip.style.display = 'block';
+        positionTip(ev);
+      });
+      row.addEventListener('mousemove', positionTip);
+      row.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    });
+
+    autoSizeValuesPanel();
     queueSync();
+  }
+
+  function positionTip(ev) {
+    const tip = $('val-tooltip');
+    const margin = 12;
+    let x = ev.clientX + margin, y = ev.clientY + margin;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    if (x + tw > window.innerWidth - 8) x = ev.clientX - tw - margin;
+    if (y + th > window.innerHeight - 8) y = ev.clientY - th - margin;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
   }
 
   function updateBatchBar() {
