@@ -992,10 +992,19 @@
         } catch {}
       }
 
-      // Clear history for old children (paths that start with dotPath + '.')
-      const childPrefix = chartKey + '::' + dotPath + '.';
-      for (const k of Object.keys(state.fieldHistory)) {
-        if (k.startsWith(childPrefix)) delete state.fieldHistory[k];
+      // Snapshot current children into fieldHistory before overwriting (so pre-edit value is reachable)
+      const prevSubtree = getNestedVal(obj, dotPath);
+      if (prevSubtree != null && typeof prevSubtree === 'object') {
+        const prevFlat = [];
+        flatten(prevSubtree, dotPath, prevFlat);
+        for (const f of prevFlat) {
+          const hk = chartKey + '::' + f.path;
+          if (!state.fieldHistory[hk]) state.fieldHistory[hk] = [];
+          if (!state.fieldHistory[hk].length) {
+            const typed = f.type === 'bool' ? f.val === 'true' : f.type === 'num' ? Number(f.val) : f.type === 'null' ? null : f.val;
+            state.fieldHistory[hk].push({value: typed, display: f.val === null ? 'null' : f.val, ts: Date.now() - 1});
+          }
+        }
       }
 
       // Record history for the parent path itself
@@ -1008,6 +1017,16 @@
       });
 
       setNestedPath(obj, dotPath, structuredClone(parsed));
+
+      // Add history entries for each child in the new subtree
+      const newSubFlat = [];
+      flatten(parsed, dotPath, newSubFlat);
+      for (const f of newSubFlat) {
+        const hk = chartKey + '::' + f.path;
+        const typed = f.type === 'bool' ? f.val === 'true' : f.type === 'num' ? Number(f.val) : f.type === 'null' ? null : f.val;
+        if (!state.fieldHistory[hk]) state.fieldHistory[hk] = [];
+        state.fieldHistory[hk].push({value: typed, display: f.val === null ? 'null' : f.val, ts: Date.now()});
+      }
       const writable = await fileHandle.createWritable();
       await writable.write(jsyaml.dump(obj, {indent: 2, lineWidth: -1}));
       await writable.close();
@@ -1742,9 +1761,14 @@
           for (const k of keys.slice(0, -1)) { if (cur == null || typeof cur !== 'object') { cur = null; break; } cur = cur[k]; }
           const original = cur != null && typeof cur === 'object' ? cur[keys[keys.length - 1]] : undefined;
           const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
-          setNestedPath(obj, dotPath, coerced);
           const hKey = chartKey + '::' + dotPath;
           if (!state.fieldHistory[hKey]) state.fieldHistory[hKey] = [];
+          // For new fields: snapshot the pre-edit value as first history entry so it's reachable in the popup
+          if (!(dotPath in (state.originalVals[chartKey] || {})) && !state.fieldHistory[hKey].length && original !== undefined) {
+            const preDisplay = original === null ? 'null' : typeof original === 'object' ? jsyaml.dump(original).trim() : String(original);
+            state.fieldHistory[hKey].push({value: original, display: preDisplay, ts: Date.now() - 1});
+          }
+          setNestedPath(obj, dotPath, coerced);
           state.fieldHistory[hKey].push({value: coerced, display: yamlMode ? jsyaml.dump(coerced).trim() : String(newValStr), ts: Date.now()});
           totalUpdated++;
         }
