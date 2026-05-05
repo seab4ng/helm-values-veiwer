@@ -790,11 +790,6 @@
         const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
         for (const {dotPath, value} of patches) {
           const origVal = getNestedVal(obj, dotPath);
-          // Snapshot paths created after chart load so isChanged() tracks them on first edit
-          if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
-          if (!(dotPath in state.originalVals[chartKey]) && origVal !== undefined) {
-            state.originalVals[chartKey][dotPath] = origVal;
-          }
           const coerced = coerceValue(value, origVal);
           setNestedPath(obj, dotPath, coerced);
           const hKey = chartKey + '::' + dotPath;
@@ -1739,12 +1734,6 @@
           let cur = obj;
           for (const k of keys.slice(0, -1)) { if (cur == null || typeof cur !== 'object') { cur = null; break; } cur = cur[k]; }
           const original = cur != null && typeof cur === 'object' ? cur[keys[keys.length - 1]] : undefined;
-          // Snapshot paths created after chart load so isChanged() tracks them on first edit
-          if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
-          if (!(dotPath in state.originalVals[chartKey])) {
-            const snap = getNestedVal(obj, dotPath);
-            if (snap !== undefined) state.originalVals[chartKey][dotPath] = snap;
-          }
           const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
           setNestedPath(obj, dotPath, coerced);
           const hKey = chartKey + '::' + dotPath;
