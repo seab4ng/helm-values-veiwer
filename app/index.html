@@ -516,8 +516,7 @@
 
   function isChanged(chartKey, dotPath, currentVal) {
     const orig = state.originalVals[chartKey];
-    if (!orig) return false; // no snapshot for this chart at all
-    if (!(dotPath in orig)) return true; // path absent from snapshot = new field = always changed
+    if (!orig || !(dotPath in orig)) return false;
     const origVal = orig[dotPath];
     return String(origVal === null ? 'null' : origVal) !== String(currentVal === null ? 'null' : currentVal);
   }
@@ -554,8 +553,7 @@
       for (const f of flat) {
         if (!isChanged(chartKey, f.path, f.val)) continue;
         if (!byChart.has(chartKey)) byChart.set(chartKey, {name: entry.name, diffs: []});
-        const origRaw = (state.originalVals[chartKey] || {})[f.path];
-        const origStr = origRaw === undefined ? '(new field)' : (origRaw === null ? 'null' : String(origRaw));
+        const origStr = (state.originalVals[chartKey] || {})[f.path] ?? '';
         byChart.get(chartKey).diffs.push({dotPath: f.path, oldVal: origStr, newVal: String(f.val === null ? 'null' : f.val)});
       }
     }
@@ -792,6 +790,11 @@
         const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
         for (const {dotPath, value} of patches) {
           const origVal = getNestedVal(obj, dotPath);
+          // Snapshot paths created after chart load so isChanged() tracks them on first edit
+          if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
+          if (!(dotPath in state.originalVals[chartKey]) && origVal !== undefined) {
+            state.originalVals[chartKey][dotPath] = origVal;
+          }
           const coerced = coerceValue(value, origVal);
           setNestedPath(obj, dotPath, coerced);
           const hKey = chartKey + '::' + dotPath;
@@ -830,8 +833,7 @@
     const currentVal = getNestedVal(entry.values, dotPath);
     const currentStr = currentVal === null ? 'null' : String(currentVal);
     const origVal = (state.originalVals[chartKey] || {})[dotPath];
-    const hasOriginal = origVal !== undefined;
-    const origStr = hasOriginal ? (origVal === null ? 'null' : String(origVal)) : null;
+    const origStr = origVal === null ? 'null' : String(origVal);
 
     let html = `<div class="fhpop-hdr"><span class="fhpop-path">${esc(dotPath)}</span><button class="fhpop-close" id="fhpop-close-btn">&times;</button></div><div class="fhpop-list">`;
     html += `<div class="fhpop-entry is-current"><span class="fhpop-val">${esc(currentStr)}</span><span class="fhpop-label">current</span></div>`;
@@ -841,7 +843,7 @@
       const time = new Date(h.ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       html += `<div class="fhpop-entry"><span class="fhpop-val">${esc(h.display)}</span><span class="fhpop-label">${esc(time)}</span><button class="btn btn-primary fhpop-use" data-idx="${i}">↩ Use</button></div>`;
     }
-    if (hasOriginal && origStr !== currentStr) {
+    if (origStr !== currentStr) {
       html += `<div class="fhpop-entry is-original"><span class="fhpop-val">${esc(origStr)}</span><span class="fhpop-label">original</span><button class="btn fhpop-use" data-idx="-1">↩ Use</button></div>`;
     }
     html += `</div>`;
@@ -878,7 +880,6 @@
     let restoreVal, displayStr;
     if (idx === -1) {
       restoreVal = (state.originalVals[chartKey] || {})[dotPath];
-      if (restoreVal === undefined) return; // new field — no original to restore to
       displayStr = restoreVal === null ? 'null' : String(restoreVal);
     } else {
       const h = (state.fieldHistory[svKey] || [])[idx];
@@ -1066,8 +1067,6 @@
       const dotPath = svKey.slice(sep + 2);
       const entry = state.charts[chartKey];
       if (!entry || (!entry.rootHandle && !entry.fileHandle)) continue;
-      const origVals = state.originalVals[chartKey] || {};
-      if (!(dotPath in origVals)) continue; // new field — no original to revert to
       const curVal = getNestedVal(entry.values, dotPath);
       if (!isChanged(chartKey, dotPath, curVal)) continue;
       if (!groups.has(chartKey)) groups.set(chartKey, []);
@@ -1120,10 +1119,8 @@
       if (!entry || !entry.values || (!entry.rootHandle && !entry.fileHandle)) continue;
       const flat = [];
       flatten(entry.values, '', flat);
-      const origVals = state.originalVals[chartKey] || {};
       for (const f of flat) {
         if (!isChanged(chartKey, f.path, f.val)) continue;
-        if (!(f.path in origVals)) continue; // new field — no original to revert to
         if (!groups.has(chartKey)) groups.set(chartKey, []);
         groups.get(chartKey).push(f.path);
       }
@@ -1742,6 +1739,12 @@
           let cur = obj;
           for (const k of keys.slice(0, -1)) { if (cur == null || typeof cur !== 'object') { cur = null; break; } cur = cur[k]; }
           const original = cur != null && typeof cur === 'object' ? cur[keys[keys.length - 1]] : undefined;
+          // Snapshot paths created after chart load so isChanged() tracks them on first edit
+          if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
+          if (!(dotPath in state.originalVals[chartKey])) {
+            const snap = getNestedVal(obj, dotPath);
+            if (snap !== undefined) state.originalVals[chartKey][dotPath] = snap;
+          }
           const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
           setNestedPath(obj, dotPath, coerced);
           const hKey = chartKey + '::' + dotPath;
