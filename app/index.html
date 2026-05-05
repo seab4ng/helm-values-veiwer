@@ -1529,8 +1529,12 @@
         if (changed && state.fieldHistory[svKey]?.length) {
           html += `<button class="btn history-btn" data-hkey="${esc(svKey)}" title="View field history (${state.fieldHistory[svKey].length} version${state.fieldHistory[svKey].length===1?'':'s'})" onclick="event.preventDefault();event.stopPropagation();">&#128336; ${state.fieldHistory[svKey].length}</button>`;
         }
-        if (canCheck && e.path.includes('.')) {
-          const parentPath = e.path.split('.').slice(0, -1).join('.');
+        if (canCheck && (e.path.includes('.') || e.path.includes('['))) {
+          const lastDot     = e.path.lastIndexOf('.');
+          const lastBracket = e.path.lastIndexOf('[');
+          const parentPath  = lastBracket > lastDot
+            ? e.path.slice(0, lastBracket)          // list item: wow.foo[0] → wow.foo
+            : e.path.slice(0, lastDot);             // map child: wow.foo.bar → wow.foo
           const ppkey = esc(key + '::' + parentPath);
           html += `<button class="btn parent-edit-btn" data-pkey="${ppkey}" title="Edit parent: ${esc(parentPath)}" onclick="event.preventDefault();event.stopPropagation();">&#8593; ${esc(parentPath)}</button>`;
         }
