@@ -1431,6 +1431,11 @@
     const tip = $('val-tooltip');
     box.querySelectorAll('.val-row[data-tip]').forEach(row => {
       row.addEventListener('mouseenter', ev => {
+        const path = row.querySelector('.val-path');
+        const val  = row.querySelector('.val-val');
+        const truncated = (path && path.scrollWidth > path.clientWidth) ||
+                          (val  && val.scrollWidth  > val.clientWidth);
+        if (!truncated) return;
         tip.textContent = row.dataset.tip;
         tip.style.display = 'block';
         positionTip(ev);
