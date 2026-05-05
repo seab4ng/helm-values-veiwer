@@ -88,6 +88,9 @@
   .history-btn{opacity:0;font-size:11px;padding:1px 6px;line-height:1.4;flex-shrink:0;margin-left:auto;}
   .val-row.changed:hover .history-btn,.history-btn:focus{opacity:0.8;}
   .val-row.changed:hover .history-btn:hover{opacity:1;}
+  .parent-edit-btn{opacity:0;font-size:11px;padding:1px 6px;line-height:1.4;flex-shrink:0;}
+  .val-row:hover .parent-edit-btn{opacity:0.6;}
+  .val-row:hover .parent-edit-btn:hover{opacity:1;}
   #val-tooltip{position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.5);z-index:500;padding:6px 10px;font-family:var(--mono);font-size:12px;line-height:1.5;color:var(--text);max-width:700px;word-break:break-all;pointer-events:none;display:none;}
   #field-history-popup{position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:300;width:300px;max-width:90vw;}
   #field-history-popup.hidden{display:none;}
@@ -242,6 +245,24 @@
 
   <!-- Field history popup -->
   <div id="field-history-popup" class="hidden"></div>
+
+  <!-- Parent edit modal -->
+  <div id="parent-edit-overlay" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width:560px;">
+      <div class="modal-hdr">
+        <h2 id="parent-edit-title">Edit parent</h2>
+        <button class="modal-close" id="parent-edit-close">&times;</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:12px;color:var(--text3);" id="parent-edit-hint"></div>
+        <textarea id="parent-edit-yaml" style="width:100%;min-height:180px;font-family:var(--mono);font-size:13px;padding:8px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--text);outline:none;resize:vertical;line-height:1.5;" placeholder="YAML value..."></textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" id="parent-edit-cancel">Cancel</button>
+          <button class="btn btn-primary" id="parent-edit-apply">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Preset modal -->
   <div id="preset-modal-overlay" class="modal-overlay hidden">
@@ -888,6 +909,115 @@
     toast(`Restored "${dotPath}" → ${displayStr}`);
   }
 
+  // ── Edit parent map/list ──
+  let _parentEditKey = null;
+
+  function openParentEdit(pkey) {
+    const sep = pkey.indexOf('::');
+    const chartKey = pkey.slice(0, sep);
+    const dotPath  = pkey.slice(sep + 2);
+    const entry = state.charts[chartKey];
+    if (!entry) return;
+    const subtree = getNestedVal(entry.values, dotPath);
+    const yamlStr = (subtree != null && typeof subtree === 'object')
+      ? jsyaml.dump(subtree, {indent: 2, lineWidth: -1}).trim()
+      : (subtree != null ? String(subtree) : '');
+    _parentEditKey = pkey;
+    $('parent-edit-title').textContent = 'Edit parent: ' + dotPath;
+    $('parent-edit-hint').textContent = 'Saving replaces all children of "' + dotPath + '" with the new YAML.';
+    $('parent-edit-yaml').value = yamlStr;
+    $('parent-edit-overlay').classList.remove('hidden');
+    $('parent-edit-yaml').focus();
+  }
+
+  function closeParentEdit() {
+    _parentEditKey = null;
+    $('parent-edit-overlay').classList.add('hidden');
+    $('parent-edit-yaml').value = '';
+  }
+
+  $('parent-edit-close').onclick  = closeParentEdit;
+  $('parent-edit-cancel').onclick = closeParentEdit;
+  $('parent-edit-overlay').addEventListener('click', e => { if (e.target === $('parent-edit-overlay')) closeParentEdit(); });
+
+  $('parent-edit-apply').onclick = async () => {
+    if (!_parentEditKey) return;
+    const sep = _parentEditKey.indexOf('::');
+    const chartKey = _parentEditKey.slice(0, sep);
+    const dotPath  = _parentEditKey.slice(sep + 2);
+    const entry = state.charts[chartKey];
+    if (!entry) return;
+
+    let parsed;
+    try {
+      parsed = jsyaml.load($('parent-edit-yaml').value.trim());
+      if (parsed === undefined) throw new Error('Empty YAML');
+    } catch (e) { toast('Invalid YAML: ' + e.message, true); return; }
+
+    try {
+      let fileHandle;
+      if (entry.fileHandle) {
+        fileHandle = entry.fileHandle;
+      } else {
+        const parts = entry.valuesRelPath.split('/');
+        let dir = entry.rootHandle;
+        for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+        fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
+      }
+      const file = await fileHandle.getFile();
+      const prevContent = await file.text();
+      const obj = jsyaml.load(prevContent) || {};
+
+      // Backup before first write
+      const backupKey = chartKey + '::' + (entry.valuesRelPath || '');
+      if (!state.backedUpFiles.has(backupKey)) {
+        try {
+          const bakName = (entry.valuesRelPath || 'values.yaml').split('/').pop().replace(/\.ya?ml$/i, '') + '.bak';
+          let bakDir = entry.rootHandle;
+          if (entry.valuesRelPath && entry.valuesRelPath.includes('/')) {
+            const parts = entry.valuesRelPath.split('/');
+            for (let i = 0; i < parts.length - 1; i++) bakDir = await bakDir.getDirectoryHandle(parts[i]);
+          }
+          if (bakDir) {
+            const bak = await bakDir.getFileHandle(bakName, {create: true});
+            const bw  = await bak.createWritable();
+            await bw.write(prevContent);
+            await bw.close();
+            state.backedUpFiles.add(backupKey);
+          }
+        } catch {}
+      }
+
+      // Clear history for old children (paths that start with dotPath + '.')
+      const childPrefix = chartKey + '::' + dotPath + '.';
+      for (const k of Object.keys(state.fieldHistory)) {
+        if (k.startsWith(childPrefix)) delete state.fieldHistory[k];
+      }
+
+      // Record history for the parent path itself
+      const hKey = chartKey + '::' + dotPath;
+      if (!state.fieldHistory[hKey]) state.fieldHistory[hKey] = [];
+      state.fieldHistory[hKey].push({
+        value: structuredClone(parsed),
+        display: jsyaml.dump(parsed, {indent: 2, lineWidth: -1}).trim(),
+        ts: Date.now()
+      });
+
+      setNestedPath(obj, dotPath, structuredClone(parsed));
+      const writable = await fileHandle.createWritable();
+      await writable.write(jsyaml.dump(obj, {indent: 2, lineWidth: -1}));
+      await writable.close();
+      entry.values = obj;
+
+    } catch (e) { toast('Write error: ' + e.message, true); return; }
+
+    closeParentEdit();
+    updateDiffBadge();
+    updateUndoBtn();
+    renderValues();
+    toast(`Updated "${dotPath}"`);
+  };
+
   // ── Feature 6: Revert / Undo all ──
   function anyChangedFields() {
     return state.chartOrder.some(chartKey => {
@@ -1399,6 +1529,11 @@
         if (changed && state.fieldHistory[svKey]?.length) {
           html += `<button class="btn history-btn" data-hkey="${esc(svKey)}" title="View field history (${state.fieldHistory[svKey].length} version${state.fieldHistory[svKey].length===1?'':'s'})" onclick="event.preventDefault();event.stopPropagation();">&#128336; ${state.fieldHistory[svKey].length}</button>`;
         }
+        if (canCheck && e.path.includes('.')) {
+          const parentPath = e.path.split('.').slice(0, -1).join('.');
+          const ppkey = esc(key + '::' + parentPath);
+          html += `<button class="btn parent-edit-btn" data-pkey="${ppkey}" title="Edit parent: ${esc(parentPath)}" onclick="event.preventDefault();event.stopPropagation();">&#8593; ${esc(parentPath)}</button>`;
+        }
         html += `</label>`;
       }
     }
@@ -1432,6 +1567,10 @@
 
     box.querySelectorAll('.history-btn').forEach(btn => {
       btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showHistoryPopup(btn.dataset.hkey, btn); });
+    });
+
+    box.querySelectorAll('.parent-edit-btn').forEach(btn => {
+      btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openParentEdit(btn.dataset.pkey); });
     });
 
     const tip = $('val-tooltip');
