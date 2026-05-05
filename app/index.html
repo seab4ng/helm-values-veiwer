@@ -483,7 +483,13 @@
     flatten(values, '', flat);
     if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
     for (const f of flat) {
-      state.originalVals[chartKey][f.path] = f.val; // raw JS value
+      // flatten stores val as String(obj) — reconstruct typed value from type tag
+      let typed;
+      if      (f.type === 'bool') typed = f.val === 'true';
+      else if (f.type === 'num')  typed = Number(f.val);
+      else if (f.type === 'null') typed = null;
+      else                        typed = f.val; // str, arr/map stored as string
+      state.originalVals[chartKey][f.path] = typed;
     }
   }
 
