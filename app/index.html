@@ -505,7 +505,10 @@
     const flat = [];
     flatten(values, '', flat);
     if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
+    const seen = new Set(); // first-wins dedup: matches renderValues deduplication
     for (const f of flat) {
+      if (seen.has(f.path)) continue; // skip duplicate path — same rule as renderValues
+      seen.add(f.path);
       // flatten stores val as String(obj) — reconstruct typed value from type tag
       let typed;
       if      (f.type === 'bool') typed = f.val === 'true';
