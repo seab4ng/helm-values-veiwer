@@ -352,13 +352,14 @@
 <script src="lib.js"></script>
 <script>
 (function(){
-  const {flatten, esc, highlight, displayName, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged, cleanStaleBracketKeys} = HelmLib;
+  const {flatten, esc, highlight, displayName, buildChartTree, valChanged, cleanStaleBracketKeys} = HelmLib;
 
   function setNestedPath(obj, path, value) {
-    const keys = path.split('.');
+    const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
     let cur = obj;
     for (let i = 0; i < keys.length - 1; i++) {
       if (cur == null || typeof cur !== 'object') return;
+      if (/^\d+$/.test(keys[i + 1])) delete cur[keys[i] + '[' + keys[i + 1] + ']'];
       if (cur[keys[i]] == null) cur[keys[i]] = {};
       cur = cur[keys[i]];
     }
@@ -377,7 +378,7 @@
   }
 
   function getNestedVal(obj, dotPath) {
-    const keys = dotPath.split('.');
+    const keys = dotPath.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
     let cur = obj;
     for (const k of keys) {
       if (cur == null || typeof cur !== 'object') return undefined;
