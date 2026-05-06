@@ -111,9 +111,9 @@ const HelmLib=(function(){
     return {root:r,entries:nsEntries,data:nsData};
   }
 
-  // Set value at dot-path in object (mutates obj)
+  // Set value at dot-path in object (mutates obj); handles bracket notation arr[0]
   function setNestedPath(obj, path, value) {
-    const keys = path.split('.');
+    const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
     let cur = obj;
     for (let i = 0; i < keys.length - 1; i++) {
       if (cur == null || typeof cur !== 'object') return;
@@ -137,9 +137,9 @@ const HelmLib=(function(){
     return s;
   }
 
-  // Get value at dot-path in object (read-only, returns undefined if missing)
+  // Get value at dot-path in object (read-only, returns undefined if missing); handles bracket notation arr[0]
   function getNestedVal(obj, dotPath) {
-    const keys = dotPath.split('.');
+    const keys = dotPath.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
     let cur = obj;
     for (const k of keys) {
       if (cur == null || typeof cur !== 'object') return undefined;

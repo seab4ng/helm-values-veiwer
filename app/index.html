@@ -1756,10 +1756,7 @@
 
 
         for (const dotPath of dotPaths) {
-          const keys = dotPath.split('.');
-          let cur = obj;
-          for (const k of keys.slice(0, -1)) { if (cur == null || typeof cur !== 'object') { cur = null; break; } cur = cur[k]; }
-          const original = cur != null && typeof cur === 'object' ? cur[keys[keys.length - 1]] : undefined;
+          const original = getNestedVal(obj, dotPath); // bracket-aware; reads current value before edit
           const coerced = yamlMode ? structuredClone(parsedYamlVal) : coerceValue(newValStr, original);
           const hKey = chartKey + '::' + dotPath;
           if (!state.fieldHistory[hKey]) state.fieldHistory[hKey] = [];

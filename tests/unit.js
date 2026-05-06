@@ -507,6 +507,35 @@ test('getNestedVal: number value at path returns number', () => {
   assert.equal(getNestedVal(obj, 'metrics.count'), 42);
 });
 
+test('getNestedVal: bracket notation reads array element', () => {
+  const obj = {env: ['a', 'b', 'c']};
+  assert.equal(getNestedVal(obj, 'env[1]'), 'b');
+});
+
+test('getNestedVal: nested bracket notation reads deep array element', () => {
+  const obj = {global: {env: ['x', 'y']}};
+  assert.equal(getNestedVal(obj, 'global.env[0]'), 'x');
+});
+
+test('getNestedVal: bracket then dot reads object inside array', () => {
+  const obj = {items: [{name: 'foo'}, {name: 'bar'}]};
+  assert.equal(getNestedVal(obj, 'items[1].name'), 'bar');
+});
+
+test('setNestedPath: bracket notation sets array element', () => {
+  const obj = {env: ['a', 'b', 'c']};
+  setNestedPath(obj, 'env[1]', 'CHANGED');
+  assert.equal(obj.env[1], 'CHANGED');
+  assert.equal(obj.env[0], 'a');
+});
+
+test('setNestedPath: nested bracket notation sets deep array element', () => {
+  const obj = {global: {env: ['x', 'y']}};
+  setNestedPath(obj, 'global.env[0]', 'NEW');
+  assert.equal(obj.global.env[0], 'NEW');
+  assert.equal(obj.global.env[1], 'y');
+});
+
 // ─────────────────────────────────────────────
 // valChanged
 // ─────────────────────────────────────────────
