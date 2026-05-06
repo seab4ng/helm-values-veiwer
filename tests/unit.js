@@ -1,7 +1,7 @@
 'use strict';
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged} = require('../app/lib.js');
+const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged, cleanStaleBracketKeys} = require('../app/lib.js');
 
 // ─────────────────────────────────────────────
 // flatten
@@ -534,6 +534,46 @@ test('setNestedPath: nested bracket notation sets deep array element', () => {
   setNestedPath(obj, 'global.env[0]', 'NEW');
   assert.equal(obj.global.env[0], 'NEW');
   assert.equal(obj.global.env[1], 'y');
+});
+
+test('setNestedPath: removes stale bracket key when setting array element', () => {
+  // Simulate corruption: obj has both the real array and a stale literal-bracket key
+  const obj = {global: {env: ['original', 'b'], 'env[0]': 'stale'}};
+  setNestedPath(obj, 'global.env[0]', 'NEW');
+  assert.equal(obj.global.env[0], 'NEW');       // real array updated
+  assert.equal(obj.global['env[0]'], undefined); // stale key removed
+});
+
+// ─────────────────────────────────────────────
+// cleanStaleBracketKeys
+// ─────────────────────────────────────────────
+
+test('cleanStaleBracketKeys: removes stale top-level bracket key', () => {
+  const obj = {env: ['a', 'b'], 'env[0]': 'stale'};
+  cleanStaleBracketKeys(obj);
+  assert.deepEqual(Object.keys(obj), ['env']);
+  assert.deepEqual(obj.env, ['a', 'b']);
+});
+
+test('cleanStaleBracketKeys: removes stale nested bracket key', () => {
+  const obj = {global: {env: ['x', 'y'], 'env[1]': 'STALE'}};
+  cleanStaleBracketKeys(obj);
+  assert.equal(obj.global['env[1]'], undefined);
+  assert.deepEqual(obj.global.env, ['x', 'y']);
+});
+
+test('cleanStaleBracketKeys: leaves non-stale bracket-looking keys alone', () => {
+  // key "env[0]" exists but there is no "env" array sibling → not stale, keep it
+  const obj = {'env[0]': 'keep'};
+  cleanStaleBracketKeys(obj);
+  assert.equal(obj['env[0]'], 'keep');
+});
+
+test('cleanStaleBracketKeys: is a no-op on clean objects', () => {
+  const obj = {global: {env: ['a', 'b'], other: 'val'}};
+  cleanStaleBracketKeys(obj);
+  assert.deepEqual(obj.global.env, ['a', 'b']);
+  assert.equal(obj.global.other, 'val');
 });
 
 // ─────────────────────────────────────────────

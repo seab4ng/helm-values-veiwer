@@ -117,11 +117,28 @@ const HelmLib=(function(){
     let cur = obj;
     for (let i = 0; i < keys.length - 1; i++) {
       if (cur == null || typeof cur !== 'object') return;
+      // Remove stale "name[n]" literal keys written by old code that lacked bracket support
+      if (/^\d+$/.test(keys[i + 1])) delete cur[keys[i] + '[' + keys[i + 1] + ']'];
       if (cur[keys[i]] == null) cur[keys[i]] = {};
       cur = cur[keys[i]];
     }
     if (cur != null && typeof cur === 'object') {
       cur[keys[keys.length - 1]] = value;
+    }
+  }
+
+  // Remove stale "key[n]" literal keys written by old code without bracket support.
+  // Mutates obj in place. Safe to call on any YAML-loaded object.
+  function cleanStaleBracketKeys(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) { obj.forEach(cleanStaleBracketKeys); return; }
+    for (const key of Object.keys(obj)) {
+      const m = key.match(/^(.+)\[(\d+)\]$/);
+      if (m && Array.isArray(obj[m[1]])) {
+        delete obj[key]; // stale literal bracket key; real data lives in the array
+      } else {
+        cleanStaleBracketKeys(obj[key]);
+      }
     }
   }
 
@@ -154,6 +171,6 @@ const HelmLib=(function(){
     return String(origVal === null ? 'null' : origVal) !== String(currentVal === null ? 'null' : currentVal);
   }
 
-  return {flatten,esc,highlight,displayName,dirOf,buildChartTree,setNestedPath,coerceValue,getNestedVal,valChanged};
+  return {flatten,esc,highlight,displayName,dirOf,buildChartTree,setNestedPath,coerceValue,getNestedVal,valChanged,cleanStaleBracketKeys};
 })();
 if(typeof module!=='undefined') module.exports=HelmLib;

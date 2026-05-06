@@ -500,6 +500,7 @@
   // ── Feature 3: Original value snapshot ──
   function snapshotOriginal(chartKey, values) {
     if (!values) return;
+    cleanStaleBracketKeys(values); // heal any "key[n]" literal keys from old buggy writes
     const flat = [];
     flatten(values, '', flat);
     if (!state.originalVals[chartKey]) state.originalVals[chartKey] = {};
@@ -1527,6 +1528,8 @@
       if (query) filtered = flat.filter(e => e.path.toLowerCase().includes(q) || String(e.val).toLowerCase().includes(q));
       // Feature 3: changed-only filter
       if (state.showChangedOnly) filtered = filtered.filter(e => isChanged(key, e.path, e.val));
+      // Deduplicate paths: first occurrence wins (real array element before stale bracket key)
+      { const seen = new Set(); filtered = filtered.filter(e => seen.has(e.path) ? false : (seen.add(e.path), true)); }
       if (query && !filtered.length && !state.showChangedOnly) continue;
       if (!filtered.length) continue;
       totalMatches += filtered.length;
