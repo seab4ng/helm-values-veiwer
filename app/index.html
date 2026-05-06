@@ -352,7 +352,7 @@
 <script src="lib.js"></script>
 <script>
 (function(){
-  const {flatten, esc, highlight, displayName} = HelmLib;
+  const {flatten, esc, highlight, displayName, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged, cleanStaleBracketKeys} = HelmLib;
 
   function setNestedPath(obj, path, value) {
     const keys = path.split('.');
