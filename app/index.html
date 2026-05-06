@@ -792,6 +792,7 @@
           fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
         }
         const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
+        cleanStaleBracketKeys(obj);
         for (const {dotPath, value} of patches) {
           const origVal = getNestedVal(obj, dotPath);
           const coerced = coerceValue(value, origVal);
@@ -900,6 +901,7 @@
         fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
       }
       const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
+      cleanStaleBracketKeys(obj);
       setNestedPath(obj, dotPath, restoreVal);
       const writable = await fileHandle.createWritable();
       await writable.write(jsyaml.dump(obj, {indent: 2, lineWidth: -1}));
@@ -973,6 +975,7 @@
       const file = await fileHandle.getFile();
       const prevContent = await file.text();
       const obj = jsyaml.load(prevContent) || {};
+      cleanStaleBracketKeys(obj); // heal stale key[n] literals before using obj
 
       // Backup before first write
       const backupKey = chartKey + '::' + (entry.valuesRelPath || '');
@@ -1110,6 +1113,7 @@
         }
         const file = await fileHandle.getFile();
         const obj = jsyaml.load(await file.text()) || {};
+        cleanStaleBracketKeys(obj);
         const origVals = state.originalVals[chartKey] || {};
         for (const dotPath of dotPaths) {
           if (dotPath in origVals) {
@@ -1164,6 +1168,7 @@
           fileHandle = await dir.getFileHandle(parts[parts.length - 1]);
         }
         const obj = jsyaml.load(await (await fileHandle.getFile()).text()) || {};
+        cleanStaleBracketKeys(obj);
         const origVals = state.originalVals[chartKey] || {};
         for (const dotPath of dotPaths) {
           if (dotPath in origVals) {
@@ -1736,6 +1741,7 @@
         const file = await fileHandle.getFile();
         const prevContent = await file.text();
         const obj = jsyaml.load(prevContent) || {};
+        cleanStaleBracketKeys(obj); // heal stale key[n] literals before using obj
 
         // Feature 7: backup before first write to this file
         const backupKey = chartKey + '::' + (entry.valuesRelPath || '');
