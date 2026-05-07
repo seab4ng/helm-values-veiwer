@@ -154,6 +154,41 @@ test('preset modal closes on X click', async ({ page }) => {
   await expect(page.locator('#preset-modal-overlay')).toBeHidden();
 });
 
+test('preset modal closes automatically after applying a preset', async ({ page }) => {
+  await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
+  await page.click('#presets-btn');
+  await page.fill('#preset-name-input', 'Auto-close Test');
+  await page.click('#preset-save-btn');
+
+  await page.click('#preset-modal-close');
+  await page.click('#clear-sel-btn');
+
+  await page.click('#presets-btn');
+  await page.locator('[data-apply-preset]').first().click();
+  await expect(page.locator('#toast-area .toast', { hasText: 'Applied' }).first()).toBeVisible({ timeout: 5000 });
+  // Modal must be hidden after apply — no user action needed
+  await expect(page.locator('#preset-modal-overlay')).toBeHidden();
+});
+
+test('applying preset to chart with no matching fields shows error toast', async ({ page }) => {
+  // Save a preset with a field that definitely does not exist: "nonexistent.field"
+  // We do this by directly manipulating localStorage since we can't create a fake field
+  await page.evaluate(() => {
+    const preset = {
+      id: 'test-no-match',
+      name: 'No Match Preset',
+      entries: [{ chartKey: 'test-chart', dotPath: 'nonexistent.field.xyz', value: '42' }],
+    };
+    localStorage.setItem('helm-editor-presets', JSON.stringify([preset]));
+  });
+
+  await page.click('#presets-btn');
+  await expect(page.locator('#preset-modal-body')).toContainText('No Match Preset');
+  await page.locator('[data-apply-preset]').first().click();
+  await expect(page.locator('#toast-area .toast.err').first()).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast.err').first()).toContainText('no matching fields');
+});
+
 test('multiple presets can coexist in the list', async ({ page }) => {
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#presets-btn');

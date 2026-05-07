@@ -46,3 +46,28 @@ test('deselecting all fields hides batch bar', async ({ page }) => {
   await page.click('#clear-sel-btn');
   await expect(page.locator('#batch-bar')).toHaveClass(/hidden/);
 });
+
+test('applying value "0" succeeds (special-cased empty check)', async ({ page }) => {
+  // The apply-btn empty guard is: if (!newValStr && newValStr !== '0')
+  // So "0" must always be accepted, not rejected as "empty".
+  await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
+  await page.fill('#new-val', '0');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+});
+
+test('apply clears #new-val input after success', async ({ page }) => {
+  await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
+  await page.fill('#new-val', '99');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#new-val')).toHaveValue('');
+});
+
+test('apply shows error when no value entered (empty string)', async ({ page }) => {
+  await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
+  // #new-val is empty by default
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast.err').first()).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast.err').first()).toContainText('Enter a new value');
+});

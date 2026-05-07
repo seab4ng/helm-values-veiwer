@@ -713,6 +713,29 @@ describe('setNestedPath: dotted-key cleanup at multiple levels', () => {
 // Additional cleanDottedKeyCollisions tests
 // ─────────────────────────────────────────────
 
+describe('cleanDottedKeyCollisions: preserves legitimate dotted YAML keys', () => {
+  test('does NOT delete dotted key when the first segment does not exist as a nested object', () => {
+    // "argocd.argoproj.io/sync-options" contains dots but is a LEGITIMATE YAML key —
+    // there is no obj.argocd nested structure, so the cleaner must leave it alone.
+    const obj = { annotations: { 'argocd.argoproj.io/sync-options': 'Prune=false' } };
+    cleanDottedKeyCollisions(obj);
+    assert.equal(obj.annotations['argocd.argoproj.io/sync-options'], 'Prune=false');
+  });
+
+  test('does NOT delete key with slash in name even though it contains a dot', () => {
+    const obj = { 'helm.sh/chart': 'myapp-1.0.0' };
+    cleanDottedKeyCollisions(obj);
+    assert.equal(obj['helm.sh/chart'], 'myapp-1.0.0');
+  });
+
+  test('does NOT delete multi-segment dotted key when intermediate nested key is missing', () => {
+    // "a.b.c" — obj has no "a" key → cannot possibly be a collision → keep
+    const obj = { 'a.b.c': 'val', x: {} };
+    cleanDottedKeyCollisions(obj);
+    assert.equal(obj['a.b.c'], 'val');
+  });
+});
+
 describe('cleanDottedKeyCollisions: additional cases', () => {
   test('removes three-segment dotted key when full nested path exists', () => {
     const obj = {'a.b.c': 'stale', a: {b: {c: 'real'}}};

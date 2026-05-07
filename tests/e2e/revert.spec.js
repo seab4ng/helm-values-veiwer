@@ -178,6 +178,59 @@ test('Undo all works for array elements created from empty list', async ({ page 
   await expect(page.locator('#diff-badge')).toBeHidden();
 });
 
+test('Revert selected works for map created from empty map {}', async ({ page }) => {
+  // nodeSelector starts as {} — set it to a map via YAML mode
+  await page.locator('.val-row', { hasText: 'nodeSelector' }).locator('input[type=checkbox]').check();
+  await page.click('#yaml-mode-btn');
+  await page.fill('#yaml-val', 'app: myapp');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // Select all changed rows and revert
+  const rows = page.locator('.val-row.changed');
+  const count = await rows.count();
+  for (let i = 0; i < count; i++) {
+    await rows.nth(i).locator('input[type=checkbox]').check();
+  }
+  await page.click('#undo-btn'); // Revert selected
+  await expect(page.locator('#toast-area .toast', { hasText: 'Reverted' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  await expect(page.locator('.val-row.changed')).toHaveCount(0);
+  await expect(page.locator('#diff-badge')).toBeHidden();
+});
+
+test('Undo all works for map created from empty map {}', async ({ page }) => {
+  await page.locator('.val-row', { hasText: 'nodeSelector' }).locator('input[type=checkbox]').check();
+  await page.click('#yaml-mode-btn');
+  await page.fill('#yaml-val', 'app: myapp');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  await page.click('#undo-btn'); // Undo all
+  await expect(page.locator('#toast-area .toast', { hasText: 'Reverted all' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  await expect(page.locator('.val-row.changed')).toHaveCount(0);
+  await expect(page.locator('#diff-badge')).toBeHidden();
+});
+
+test('undo button shows "Undo all" after deselecting changed field', async ({ page }) => {
+  await applyChange(page, 'replicaCount', '5');
+  // After apply, selectedVals cleared → undo shows "Undo all"
+  await expect(page.locator('#undo-btn')).toContainText('Undo all');
+
+  // Select the changed field → undo should switch to "Revert selected"
+  await page.locator('.val-row.changed', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
+  await expect(page.locator('#undo-btn')).toContainText('Revert selected');
+
+  // Clear selection → undo should revert to "Undo all"
+  await page.click('#clear-sel-btn');
+  await expect(page.locator('#undo-btn')).toContainText('Undo all');
+});
+
 test('applying same value twice then reverting removes changed class', async ({ page }) => {
   // Apply once, apply again with a different value, then revert
   await applyChange(page, 'replicaCount', '5');

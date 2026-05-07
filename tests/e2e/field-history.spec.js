@@ -130,3 +130,40 @@ test('applying twice adds second history entry visible in popup', async ({ page 
   // history button now shows 2 entries
   await expect(page.locator('.history-btn').first()).toContainText('2');
 });
+
+test('clicking "Use" on intermediate history entry restores that value', async ({ page }) => {
+  // Apply 5 then 9 — field is now 9, history has two entries
+  await applyChange(page, 'replicaCount', '5');
+  await applyChange(page, 'replicaCount', '9');
+
+  // Open popup
+  const row = page.locator('.val-row.changed', { hasText: 'replicaCount' });
+  await row.hover();
+  await page.locator('.history-btn').first().click({ force: true });
+
+  // The popup shows the intermediate entry (value=5). Click "Use" on it.
+  // The intermediate entry has a fhpop-use button that is NOT inside is-original.
+  const nonOriginalUse = page.locator('#field-history-popup .fhpop-entry:not(.is-current):not(.is-original) .fhpop-use').first();
+  await nonOriginalUse.click();
+  await expect(page.locator('#toast-area .toast', { hasText: 'Restored' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // Field should show value 5 now — still changed (5 ≠ original 2), but visible
+  await expect(page.locator('.val-row.changed', { hasText: 'replicaCount' })).toBeVisible();
+});
+
+test('intermediate "Use" entry does not clear history (field still shows history btn)', async ({ page }) => {
+  await applyChange(page, 'replicaCount', '5');
+  await applyChange(page, 'replicaCount', '9');
+
+  const row = page.locator('.val-row.changed', { hasText: 'replicaCount' });
+  await row.hover();
+  await page.locator('.history-btn').first().click({ force: true });
+
+  const nonOriginalUse = page.locator('#field-history-popup .fhpop-entry:not(.is-current):not(.is-original) .fhpop-use').first();
+  await nonOriginalUse.click();
+  await page.waitForTimeout(200);
+
+  // History is NOT cleared (only restoring to original clears history)
+  await expect(page.locator('.history-btn').first()).toBeAttached();
+});
