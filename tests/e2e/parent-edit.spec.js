@@ -129,25 +129,30 @@ test('parent-edit apply updates diff badge when value changes', async ({ page })
 // ── Empty textarea (clear to empty container) ──
 
 test('blank textarea on list parent sets it to [] and shows success', async ({ page }) => {
-  // imagePullSecrets is currently [] — fill it first, then clear via parent-edit
+  // imagePullSecrets starts as [] — fill with a SCALAR list so imagePullSecrets[0]
+  // is the leaf row; its parent-edit button then points to imagePullSecrets (the array).
+  // (Using [{name:x}] would make imagePullSecrets[0].name the leaf, whose parent-edit
+  //  points to imagePullSecrets[0] — an object — not the list itself.)
   await page.locator('.val-row', { hasText: 'imagePullSecrets' }).locator('input[type=checkbox]').check();
   await page.click('#yaml-mode-btn');
-  await page.fill('#yaml-val', '[{name: mykey}]');
+  await page.fill('#yaml-val', '[mykey]');
   await page.click('#apply-btn');
   await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
-  // Open parent-edit for the first element's parent (imagePullSecrets)
+  // imagePullSecrets[0] is the changed leaf; its parent-edit points to imagePullSecrets (array)
   const changed = page.locator('.val-row.changed').first();
   await changed.hover();
   await changed.locator('.parent-edit-btn').click({ force: true });
-  // Clear textarea and apply → should set parent back to []
+  // Confirm modal is for imagePullSecrets (the list)
+  await expect(page.locator('#parent-edit-title')).toContainText('imagePullSecrets');
+  // Clear textarea → infers [] (array parent)
   await page.fill('#parent-edit-yaml', '');
   await page.click('#parent-edit-apply');
   await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
 
-  // All changed rows gone (back to original [])
+  // Back to original [] — no changed rows
   await expect(page.locator('.val-row.changed')).toHaveCount(0);
 });
 
@@ -174,10 +179,10 @@ test('blank textarea on map parent sets it to {} and shows success', async ({ pa
 });
 
 test('hint text tells user what blank will produce for a list', async ({ page }) => {
-  // imagePullSecrets is [] — parent-edit hint should mention []
+  // Use scalar list so the leaf row's parent-edit points to imagePullSecrets (array)
   await page.locator('.val-row', { hasText: 'imagePullSecrets' }).locator('input[type=checkbox]').check();
   await page.click('#yaml-mode-btn');
-  await page.fill('#yaml-val', '[{name: mykey}]');
+  await page.fill('#yaml-val', '[mykey]');
   await page.click('#apply-btn');
   await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
   await page.waitForTimeout(200);
