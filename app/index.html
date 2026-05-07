@@ -1060,6 +1060,28 @@
   };
 
   // ── Feature 6: Revert / Undo all ──
+
+  // Returns the dotPath to revert for a given path:
+  //   • If path itself is in originalVals → return it as-is.
+  //   • If path is a "new" field created from an originally-empty container (e.g.
+  //     arr[0] whose parent arr was originally []) → return the nearest ancestor
+  //     that exists in originalVals so we revert the whole container.
+  //   • Otherwise → null (nothing to revert).
+  function resolveRevertPath(chartKey, dotPath) {
+    const origVals = state.originalVals[chartKey] || {};
+    if (dotPath in origVals) return dotPath;
+    let p = dotPath;
+    while (true) {
+      const lb = p.lastIndexOf('[');
+      const ld = p.lastIndexOf('.');
+      const cut = lb > ld ? lb : ld;
+      if (cut < 0) break;
+      p = p.slice(0, cut);
+      if (p in origVals) return p;
+    }
+    return null; // no ancestor found
+  }
+
   function anyChangedFields() {
     return state.chartOrder.some(chartKey => {
       const entry = state.charts[chartKey];
@@ -1103,11 +1125,14 @@
       const dotPath = svKey.slice(sep + 2);
       const entry = state.charts[chartKey];
       if (!entry || (!entry.rootHandle && !entry.fileHandle)) continue;
-      if (!(dotPath in (state.originalVals[chartKey] || {}))) continue; // skip new fields — no original to revert to
-      const curVal = getNestedVal(entry.values, dotPath);
-      if (!isChanged(chartKey, dotPath, curVal)) continue;
+      // Resolve: if path has no original, walk up to find the ancestor container that does
+      const revertPath = resolveRevertPath(chartKey, dotPath);
+      if (revertPath === null) continue;
+      const curVal = getNestedVal(entry.values, revertPath);
+      if (!isChanged(chartKey, revertPath, curVal)) continue;
       if (!groups.has(chartKey)) groups.set(chartKey, []);
-      groups.get(chartKey).push(dotPath);
+      const arr = groups.get(chartKey);
+      if (!arr.includes(revertPath)) arr.push(revertPath); // dedup (multiple children → same parent)
     }
     if (!groups.size) { toast('No changed fields in selection', true); return; }
     let reverted = 0;
@@ -1129,11 +1154,16 @@
         cleanStaleBracketKeys(obj); cleanDottedKeyCollisions(obj);
         const origVals = state.originalVals[chartKey] || {};
         for (const dotPath of dotPaths) {
-          if (dotPath in origVals) {
-            setNestedPath(obj, dotPath, origVals[dotPath]);
-            delete state.fieldHistory[chartKey + '::' + dotPath];
-            reverted++;
+          // dotPaths already resolved — each entry is guaranteed to be in origVals
+          setNestedPath(obj, dotPath, origVals[dotPath]);
+          // Clean history for this path and any child paths (handles container revert)
+          for (const hKey of Object.keys(state.fieldHistory)) {
+            const prefix = chartKey + '::' + dotPath;
+            if (hKey === prefix || hKey.startsWith(prefix + '.') || hKey.startsWith(prefix + '[')) {
+              delete state.fieldHistory[hKey];
+            }
           }
+          reverted++;
         }
         const writable = await fileHandle.createWritable();
         await writable.write(jsyaml.dump(obj, { indent: 2, lineWidth: -1 }));
@@ -1160,9 +1190,13 @@
       const origVals = state.originalVals[chartKey] || {};
       for (const f of flat) {
         if (!isChanged(chartKey, f.path, f.val)) continue;
-        if (!(f.path in origVals)) continue; // skip new fields — no original to revert to
+        // Resolve: if path has no original (e.g. arr[0] from originally-empty []),
+        // walk up to the ancestor container that does have an original
+        const revertPath = resolveRevertPath(chartKey, f.path);
+        if (revertPath === null) continue;
         if (!groups.has(chartKey)) groups.set(chartKey, []);
-        groups.get(chartKey).push(f.path);
+        const arr = groups.get(chartKey);
+        if (!arr.includes(revertPath)) arr.push(revertPath); // dedup
       }
     }
     if (!groups.size) { toast('No changed fields to revert', true); return; }
@@ -1184,11 +1218,16 @@
         cleanStaleBracketKeys(obj); cleanDottedKeyCollisions(obj);
         const origVals = state.originalVals[chartKey] || {};
         for (const dotPath of dotPaths) {
-          if (dotPath in origVals) {
-            setNestedPath(obj, dotPath, origVals[dotPath]);
-            delete state.fieldHistory[chartKey + '::' + dotPath];
-            reverted++;
+          // dotPaths already resolved — each entry is guaranteed to be in origVals
+          setNestedPath(obj, dotPath, origVals[dotPath]);
+          // Clean history for this path and any child paths (handles container revert)
+          for (const hKey of Object.keys(state.fieldHistory)) {
+            const prefix = chartKey + '::' + dotPath;
+            if (hKey === prefix || hKey.startsWith(prefix + '.') || hKey.startsWith(prefix + '[')) {
+              delete state.fieldHistory[hKey];
+            }
           }
+          reverted++;
         }
         const writable = await fileHandle.createWritable();
         await writable.write(jsyaml.dump(obj, { indent: 2, lineWidth: -1 }));

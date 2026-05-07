@@ -136,6 +136,48 @@ test('Undo all hides Changed button after completion', async ({ page }) => {
   await expect(page.locator('#changed-only-btn')).toBeHidden();
 });
 
+test('Revert selected works for array elements created from empty list', async ({ page }) => {
+  // imagePullSecrets starts as [] — fill it with a list via YAML mode
+  await page.locator('.val-row', { hasText: 'imagePullSecrets' }).locator('input[type=checkbox]').check();
+  await page.click('#yaml-mode-btn');
+  await page.fill('#yaml-val', '[{name: mykey}]');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // Select the new array element rows and revert
+  const rows = page.locator('.val-row.changed');
+  const count = await rows.count();
+  for (let i = 0; i < count; i++) {
+    await rows.nth(i).locator('input[type=checkbox]').check();
+  }
+  await page.click('#undo-btn'); // Revert selected
+  await expect(page.locator('#toast-area .toast', { hasText: 'Reverted' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // Field should be back to [] — no changed rows
+  await expect(page.locator('.val-row.changed')).toHaveCount(0);
+  await expect(page.locator('#diff-badge')).toBeHidden();
+});
+
+test('Undo all works for array elements created from empty list', async ({ page }) => {
+  // imagePullSecrets starts as [] — fill it via YAML mode (no selection needed for undo all)
+  await page.locator('.val-row', { hasText: 'imagePullSecrets' }).locator('input[type=checkbox]').check();
+  await page.click('#yaml-mode-btn');
+  await page.fill('#yaml-val', '[{name: mykey}]');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // Undo all (no selection — button shows "Undo all")
+  await page.click('#undo-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Reverted all' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  await expect(page.locator('.val-row.changed')).toHaveCount(0);
+  await expect(page.locator('#diff-badge')).toBeHidden();
+});
+
 test('applying same value twice then reverting removes changed class', async ({ page }) => {
   // Apply once, apply again with a different value, then revert
   await applyChange(page, 'replicaCount', '5');
