@@ -538,7 +538,12 @@
       if (!entry || !entry.values) continue;
       const flat = [];
       flatten(entry.values, '', flat);
-      for (const f of flat) { if (isChanged(chartKey, f.path, f.val)) n++; }
+      const seen = new Set(); // first-wins dedup: same rule as renderValues
+      for (const f of flat) {
+        if (seen.has(f.path)) continue;
+        seen.add(f.path);
+        if (isChanged(chartKey, f.path, f.val)) n++;
+      }
     }
     if (n === 0) {
       badge.style.display = 'none';
@@ -558,7 +563,10 @@
       if (!entry || !entry.values) continue;
       const flat = [];
       flatten(entry.values, '', flat);
+      const seenDiff = new Set(); // first-wins dedup: avoid double-counting duplicate flat paths
       for (const f of flat) {
+        if (seenDiff.has(f.path)) continue;
+        seenDiff.add(f.path);
         if (!isChanged(chartKey, f.path, f.val)) continue;
         if (!byChart.has(chartKey)) byChart.set(chartKey, {name: entry.name, diffs: []});
         const origRaw = (state.originalVals[chartKey] || {})[f.path];
@@ -1327,6 +1335,10 @@
     for (const k of toRemove) {
       delete state.charts[k];
       delete state.originalVals[k];
+      // Clean up field history for this chart so there are no memory leaks
+      for (const hKey of Object.keys(state.fieldHistory)) {
+        if (hKey.startsWith(k + '::')) delete state.fieldHistory[hKey];
+      }
       const idx = state.chartOrder.indexOf(k);
       if (idx > -1) state.chartOrder.splice(idx, 1);
       for (const sv of [...state.selectedVals]) {

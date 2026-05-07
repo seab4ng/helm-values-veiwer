@@ -1,0 +1,127 @@
+const { test, expect } = require('@playwright/test');
+const { injectMocks } = require('./helpers/mock-fsapi');
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(injectMocks);
+  await page.goto('/');
+  await page.click('#add-chart-btn');
+  await expect(page.locator('.val-row').first()).toBeVisible({ timeout: 5000 });
+});
+
+test('parent-edit button is present in DOM for nested fields', async ({ page }) => {
+  // image.repository is a nested field → should have a parent-edit-btn
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await expect(row.locator('.parent-edit-btn')).toBeAttached();
+});
+
+test('top-level field has no parent-edit button', async ({ page }) => {
+  // replicaCount has no dot → no parent-edit-btn
+  const row = page.locator('.val-row', { hasText: 'replicaCount' }).first();
+  await expect(row.locator('.parent-edit-btn')).toHaveCount(0);
+});
+
+test('hovering nested field and clicking parent-edit opens modal', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await expect(page.locator('#parent-edit-overlay')).toBeVisible();
+});
+
+test('parent-edit modal title contains parent path name', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await expect(page.locator('#parent-edit-title')).toContainText('image');
+});
+
+test('parent-edit textarea pre-fills with current YAML of the parent', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  // The image: object contains repository, tag, pullPolicy
+  const yamlContent = await page.locator('#parent-edit-yaml').inputValue();
+  expect(yamlContent).toContain('repository');
+  expect(yamlContent).toContain('nginx');
+});
+
+test('parent-edit cancel closes modal without changing values', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await page.click('#parent-edit-cancel');
+  await expect(page.locator('#parent-edit-overlay')).toBeHidden();
+  // No fields should be marked changed
+  await expect(page.locator('.val-row.changed')).toHaveCount(0);
+});
+
+test('parent-edit close (X) button closes modal', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await page.click('#parent-edit-close');
+  await expect(page.locator('#parent-edit-overlay')).toBeHidden();
+});
+
+test('parent-edit overlay click outside closes modal', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await expect(page.locator('#parent-edit-overlay')).toBeVisible();
+  // Click the overlay backdrop (top-left corner, outside the modal box)
+  await page.locator('#parent-edit-overlay').click({ position: { x: 5, y: 5 } });
+  await expect(page.locator('#parent-edit-overlay')).toBeHidden();
+});
+
+test('parent-edit apply with valid YAML shows success toast', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await page.fill('#parent-edit-yaml', 'repository: nginx\ntag: v99\npullPolicy: Always');
+  await page.click('#parent-edit-apply');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+});
+
+test('parent-edit apply marks child fields as changed', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  // Change tag to v99 (different from original "latest")
+  await page.fill('#parent-edit-yaml', 'repository: nginx\ntag: v99\npullPolicy: Always');
+  await page.click('#parent-edit-apply');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+  await expect(page.locator('.val-row.changed', { hasText: 'image.tag' })).toBeVisible();
+});
+
+test('parent-edit apply with invalid YAML shows error toast', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await page.fill('#parent-edit-yaml', '{ invalid yaml :::');
+  await page.click('#parent-edit-apply');
+  await expect(page.locator('#toast-area .toast.err').first()).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#toast-area .toast.err').first()).toContainText('Invalid YAML');
+});
+
+test('parent-edit apply closes modal on success', async ({ page }) => {
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  await page.fill('#parent-edit-yaml', 'repository: nginx\ntag: latest\npullPolicy: IfNotPresent');
+  await page.click('#parent-edit-apply');
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
+  await expect(page.locator('#parent-edit-overlay')).toBeHidden();
+});
+
+test('parent-edit apply updates diff badge when value changes', async ({ page }) => {
+  await expect(page.locator('#diff-badge')).toBeHidden();
+  const row = page.locator('.val-row', { hasText: 'image.repository' });
+  await row.hover();
+  await row.locator('.parent-edit-btn').click({ force: true });
+  // Change pullPolicy so at least one child differs
+  await page.fill('#parent-edit-yaml', 'repository: nginx\ntag: v99\npullPolicy: Always');
+  await page.click('#parent-edit-apply');
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+  await expect(page.locator('#diff-badge')).toBeVisible();
+});

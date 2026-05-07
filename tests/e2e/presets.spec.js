@@ -98,22 +98,32 @@ test('applying a preset writes fields and shows Applied toast', async ({ page })
   await expect(page.locator('#toast-area .toast', { hasText: 'Applied' }).first()).toBeVisible({ timeout: 5000 });
 });
 
-test('applying preset with prefilled value fills new-val input', async ({ page }) => {
+test('applying preset with stored value marks field as changed', async ({ page }) => {
+  // 1. Apply replicaCount = 5 so the in-memory value is 5
   await page.locator('.val-row', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
-  await page.fill('#new-val', '10');
+  await page.fill('#new-val', '5');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+
+  // 2. Re-select and save preset while value is 5 → preset stores value='5'
+  await page.locator('.val-row.changed', { hasText: 'replicaCount' }).locator('input[type=checkbox]').check();
   await page.click('#presets-btn');
   await page.fill('#preset-name-input', 'Value Preset');
   await page.click('#preset-save-btn');
-
   await page.click('#preset-modal-close');
-  await page.click('#clear-sel-btn');
 
+  // 3. Undo the change → replicaCount back to original (2)
+  await page.click('#undo-btn'); // Revert selected
+  await expect(page.locator('#toast-area .toast').first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+  await expect(page.locator('.val-row.changed', { hasText: 'replicaCount' })).toHaveCount(0);
+
+  // 4. Apply the preset → should write 5 and mark replicaCount as changed again
   await page.click('#presets-btn');
   await page.locator('[data-apply-preset]').first().click();
-  // applyPreset fills #new-val with saved value and auto-closes modal
-
-  // batch bar visible (fields selected) → #new-val accessible
-  await expect(page.locator('#new-val')).toHaveValue('10');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Applied' }).first()).toBeVisible({ timeout: 5000 });
+  await page.waitForTimeout(200);
+  await expect(page.locator('.val-row.changed', { hasText: 'replicaCount' })).toBeVisible();
 });
 
 test('deleting a preset removes it from list', async ({ page }) => {

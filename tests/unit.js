@@ -652,3 +652,143 @@ test('valChanged: undefined vs undefined returns false', () => {
   // undefined === null is false, so String(undefined) = "undefined" for both sides
   assert.equal(valChanged(undefined, undefined), false);
 });
+
+// ─────────────────────────────────────────────
+// Additional coerceValue tests — quote stripping
+// ─────────────────────────────────────────────
+
+describe('coerceValue: quote stripping', () => {
+  test('single-quoted string strips quotes', () => {
+    assert.equal(coerceValue("'hello'", 'x'), 'hello');
+  });
+
+  test('double-quoted string strips quotes', () => {
+    assert.equal(coerceValue('"world"', 'x'), 'world');
+  });
+
+  test('empty single-quoted string strips to empty string', () => {
+    assert.equal(coerceValue("''", 'x'), '');
+  });
+
+  test('single-quote-delimited number is returned as plain string (no coercion)', () => {
+    // The quotes signal "treat as string" — original type is ignored
+    assert.equal(coerceValue("'42'", 100), '42');
+  });
+
+  test('single-quoted "true" is returned as string (no boolean coercion)', () => {
+    assert.equal(coerceValue("'true'", false), 'true');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional setNestedPath tests — dotted-key cleanup at multiple levels
+// ─────────────────────────────────────────────
+
+describe('setNestedPath: dotted-key cleanup at multiple levels', () => {
+  test('deletes root-level dotted shortcut (two-part path)', () => {
+    // obj has a stale "a.b" key AND nested a.b — writing should keep only nested
+    const obj = {'a.b': 'stale', a: {b: 'old'}};
+    setNestedPath(obj, 'a.b', 'NEW');
+    assert.equal(obj['a.b'], undefined);
+    assert.equal(obj.a.b, 'NEW');
+  });
+
+  test('deletes intermediate dotted shortcut when writing three-part path', () => {
+    // a has key "b.c" (stale) AND nested b.c — write a.b.c should clean a["b.c"]
+    const obj = {a: {'b.c': 'stale', b: {c: 'old'}}};
+    setNestedPath(obj, 'a.b.c', 'NEW');
+    assert.equal(obj.a['b.c'], undefined);
+    assert.equal(obj.a.b.c, 'NEW');
+  });
+
+  test('sets value inside array element via bracket notation', () => {
+    const obj = {items: [{name: 'foo'}, {name: 'bar'}]};
+    setNestedPath(obj, 'items[1].name', 'baz');
+    assert.equal(obj.items[1].name, 'baz');
+    assert.equal(obj.items[0].name, 'foo'); // sibling unchanged
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional cleanDottedKeyCollisions tests
+// ─────────────────────────────────────────────
+
+describe('cleanDottedKeyCollisions: additional cases', () => {
+  test('removes three-segment dotted key when full nested path exists', () => {
+    const obj = {'a.b.c': 'stale', a: {b: {c: 'real'}}};
+    cleanDottedKeyCollisions(obj);
+    assert.equal(obj['a.b.c'], undefined);
+    assert.equal(obj.a.b.c, 'real');
+  });
+
+  test('keeps dotted key when only partial nested path exists', () => {
+    // obj.a exists but obj.a.b does not → dotted key "a.b" is NOT stale
+    const obj = {'a.b': 'keep', a: {other: 1}};
+    cleanDottedKeyCollisions(obj);
+    assert.equal(obj['a.b'], 'keep');
+  });
+
+  test('processes objects inside arrays recursively', () => {
+    // Each element may have dotted-key collisions
+    const obj = {items: [{'x.y': 'stale', x: {y: 'real'}}]};
+    cleanDottedKeyCollisions(obj);
+    assert.equal(obj.items[0]['x.y'], undefined);
+    assert.equal(obj.items[0].x.y, 'real');
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional flatten tests — edge values
+// ─────────────────────────────────────────────
+
+describe('flatten: edge scalar values', () => {
+  test('empty string value produces str entry', () => {
+    const out = [];
+    flatten({key: ''}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, 'key');
+    assert.equal(out[0].val, '');
+    assert.equal(out[0].type, 'str');
+  });
+
+  test('zero number produces num entry', () => {
+    const out = [];
+    flatten({count: 0}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, 'count');
+    assert.equal(out[0].val, '0');
+    assert.equal(out[0].type, 'num');
+  });
+
+  test('multiple top-level keys all appear', () => {
+    const out = [];
+    flatten({a: 1, b: 2, c: 3}, '', out);
+    assert.equal(out.length, 3);
+    const paths = out.map(e => e.path);
+    assert.ok(paths.includes('a'));
+    assert.ok(paths.includes('b'));
+    assert.ok(paths.includes('c'));
+  });
+});
+
+// ─────────────────────────────────────────────
+// Additional buildChartTree tests — alias support
+// ─────────────────────────────────────────────
+
+describe('buildChartTree: alias support', () => {
+  test('dependency with alias uses alias as the dependency name', () => {
+    const fileMap = {
+      'Chart.yaml': jsonStr({
+        name: 'root',
+        dependencies: [{name: 'child', alias: 'my-alias', version: '1.0.0'}],
+      }),
+      'charts/child/Chart.yaml': jsonStr({name: 'child', version: '1.0.0'}),
+    };
+    const tree = buildChartTree(fileMap, mockParse);
+    // The alias is used when listing deps in the parent entry
+    const rootDeps = tree.entries['root'].dependencies;
+    // alias "my-alias" should appear in root deps (possibly namespaced)
+    const hasAlias = rootDeps.some(d => d === 'my-alias' || d.endsWith('|my-alias') || d.endsWith('my-alias'));
+    assert.ok(hasAlias, `Expected alias in deps, got: ${JSON.stringify(rootDeps)}`);
+  });
+});
