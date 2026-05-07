@@ -952,7 +952,8 @@
       : (subtree != null ? String(subtree) : '');
     _parentEditKey = pkey;
     $('parent-edit-title').textContent = 'Edit parent: ' + dotPath;
-    $('parent-edit-hint').textContent = 'Saving replaces all children of "' + dotPath + '" with the new YAML.';
+    const emptyRepr = Array.isArray(subtree) ? '[]' : (subtree !== null && typeof subtree === 'object') ? '{}' : '""';
+    $('parent-edit-hint').textContent = 'Saving replaces all children of "' + dotPath + '" with the new YAML. Leave blank to set to ' + emptyRepr + '.';
     $('parent-edit-yaml').value = yamlStr;
     $('parent-edit-overlay').classList.remove('hidden');
     $('parent-edit-yaml').focus();
@@ -978,8 +979,16 @@
 
     let parsed;
     try {
-      parsed = jsyaml.load($('parent-edit-yaml').value.trim());
-      if (parsed === undefined) throw new Error('Empty YAML');
+      const rawInput = $('parent-edit-yaml').value.trim();
+      if (rawInput === '') {
+        // Blank textarea → infer the correct empty value from the current subtree type:
+        // list → [], map → {}, scalar → ''
+        const cur = getNestedVal(entry.values, dotPath);
+        parsed = Array.isArray(cur) ? [] : (cur !== null && typeof cur === 'object') ? {} : '';
+      } else {
+        parsed = jsyaml.load(rawInput);
+        if (parsed === undefined) throw new Error('Empty YAML');
+      }
     } catch (e) { toast('Invalid YAML: ' + e.message, true); return; }
 
     try {

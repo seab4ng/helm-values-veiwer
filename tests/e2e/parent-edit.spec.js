@@ -125,3 +125,66 @@ test('parent-edit apply updates diff badge when value changes', async ({ page })
   await page.waitForTimeout(200);
   await expect(page.locator('#diff-badge')).toBeVisible();
 });
+
+// ── Empty textarea (clear to empty container) ──
+
+test('blank textarea on list parent sets it to [] and shows success', async ({ page }) => {
+  // imagePullSecrets is currently [] — fill it first, then clear via parent-edit
+  await page.locator('.val-row', { hasText: 'imagePullSecrets' }).locator('input[type=checkbox]').check();
+  await page.click('#yaml-mode-btn');
+  await page.fill('#yaml-val', '[{name: mykey}]');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // Open parent-edit for the first element's parent (imagePullSecrets)
+  const changed = page.locator('.val-row.changed').first();
+  await changed.hover();
+  await changed.locator('.parent-edit-btn').click({ force: true });
+  // Clear textarea and apply → should set parent back to []
+  await page.fill('#parent-edit-yaml', '');
+  await page.click('#parent-edit-apply');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // All changed rows gone (back to original [])
+  await expect(page.locator('.val-row.changed')).toHaveCount(0);
+});
+
+test('blank textarea on map parent sets it to {} and shows success', async ({ page }) => {
+  // nodeSelector is {} — set to a map first
+  await page.locator('.val-row', { hasText: 'nodeSelector' }).locator('input[type=checkbox]').check();
+  await page.click('#yaml-mode-btn');
+  await page.fill('#yaml-val', 'app: myapp');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  // Open parent-edit on the changed child (nodeSelector.app)
+  const changed = page.locator('.val-row.changed').first();
+  await changed.hover();
+  await changed.locator('.parent-edit-btn').click({ force: true });
+  // Clear → apply → should set nodeSelector back to {}
+  await page.fill('#parent-edit-yaml', '');
+  await page.click('#parent-edit-apply');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  await expect(page.locator('.val-row.changed')).toHaveCount(0);
+});
+
+test('hint text tells user what blank will produce for a list', async ({ page }) => {
+  // imagePullSecrets is [] — parent-edit hint should mention []
+  await page.locator('.val-row', { hasText: 'imagePullSecrets' }).locator('input[type=checkbox]').check();
+  await page.click('#yaml-mode-btn');
+  await page.fill('#yaml-val', '[{name: mykey}]');
+  await page.click('#apply-btn');
+  await expect(page.locator('#toast-area .toast', { hasText: 'Updated' }).first()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
+
+  const changed = page.locator('.val-row.changed').first();
+  await changed.hover();
+  await changed.locator('.parent-edit-btn').click({ force: true });
+  // Hint must tell user "leave blank to set to []"
+  await expect(page.locator('#parent-edit-hint')).toContainText('[]');
+});
