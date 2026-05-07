@@ -352,19 +352,26 @@
 <script src="lib.js"></script>
 <script>
 (function(){
-  const {flatten, esc, highlight, displayName, buildChartTree, valChanged, cleanStaleBracketKeys, cleanDottedKeyCollisions} = HelmLib;
+  const {flatten, esc, highlight, displayName, buildChartTree, valChanged, cleanStaleBracketKeys, cleanDottedKeyCollisions, parsePath, parentPathOf} = HelmLib;
 
   function setNestedPath(obj, path, value) {
-    const keys = path.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+    const segs = parsePath(path);
+    if (!segs.length) return;
     let cur = obj;
-    for (let i = 0; i < keys.length - 1; i++) {
+    for (let i = 0; i < segs.length - 1; i++) {
       if (cur == null || typeof cur !== 'object') return;
-      if (/^\d+$/.test(keys[i + 1])) delete cur[keys[i] + '[' + keys[i + 1] + ']'];
-      delete cur[keys.slice(i).join('.')]; // remove dotted-key shortcut colliding with nested path
-      if (cur[keys[i]] == null) cur[keys[i]] = {};
-      cur = cur[keys[i]];
+      const seg = segs[i];
+      const nextSeg = segs[i + 1];
+      if (/^\d+$/.test(nextSeg)) delete cur[seg + '[' + nextSeg + ']'];
+      // Remove dotted-key shortcuts only when all remaining segs are simple (no dots/brackets)
+      const remainingSegs = segs.slice(i);
+      if (remainingSegs.every(s => !s.includes('.') && !s.includes('[') && !s.includes(']'))) {
+        delete cur[remainingSegs.join('.')];
+      }
+      if (cur[seg] == null) cur[seg] = {};
+      cur = cur[seg];
     }
-    if (cur != null && typeof cur === 'object') cur[keys[keys.length - 1]] = value;
+    if (cur != null && typeof cur === 'object') cur[segs[segs.length - 1]] = value;
   }
 
   function coerceValue(str, original) {
@@ -379,9 +386,9 @@
   }
 
   function getNestedVal(obj, dotPath) {
-    const keys = dotPath.replace(/\[(\d+)\]/g, '.$1').split('.').filter(Boolean);
+    const segs = parsePath(dotPath);
     let cur = obj;
-    for (const k of keys) {
+    for (const k of segs) {
       if (cur == null || typeof cur !== 'object') return undefined;
       cur = cur[k];
     }
@@ -1072,11 +1079,8 @@
     if (dotPath in origVals) return dotPath;
     let p = dotPath;
     while (true) {
-      const lb = p.lastIndexOf('[');
-      const ld = p.lastIndexOf('.');
-      const cut = lb > ld ? lb : ld;
-      if (cut < 0) break;
-      p = p.slice(0, cut);
+      p = parentPathOf(p);
+      if (p === null) break;
       if (p in origVals) return p;
     }
     return null; // no ancestor found
@@ -1622,12 +1626,8 @@
         if (changed && state.fieldHistory[svKey]?.length) {
           html += `<button class="btn history-btn" data-hkey="${esc(svKey)}" title="View field history (${state.fieldHistory[svKey].length} version${state.fieldHistory[svKey].length===1?'':'s'})" onclick="event.preventDefault();event.stopPropagation();">&#128336; ${state.fieldHistory[svKey].length}</button>`;
         }
-        if (canCheck && (e.path.includes('.') || e.path.includes('['))) {
-          const lastDot     = e.path.lastIndexOf('.');
-          const lastBracket = e.path.lastIndexOf('[');
-          const parentPath  = lastBracket > lastDot
-            ? e.path.slice(0, lastBracket)          // list item: wow.foo[0] → wow.foo
-            : e.path.slice(0, lastDot);             // map child: wow.foo.bar → wow.foo
+        const parentPath = parentPathOf(e.path);
+        if (canCheck && parentPath !== null) {
           const ppkey = esc(key + '::' + parentPath);
           html += `<button class="btn parent-edit-btn" data-pkey="${ppkey}" title="Edit parent: ${esc(parentPath)}" onclick="event.preventDefault();event.stopPropagation();">&#8593; ${esc(parentPath)}</button>`;
         }

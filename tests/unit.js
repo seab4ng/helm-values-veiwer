@@ -1,7 +1,7 @@
 'use strict';
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged, cleanStaleBracketKeys, cleanDottedKeyCollisions} = require('../app/lib.js');
+const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged, cleanStaleBracketKeys, cleanDottedKeyCollisions, parsePath, parentPathOf} = require('../app/lib.js');
 
 // ─────────────────────────────────────────────
 // flatten
@@ -768,6 +768,172 @@ describe('flatten: edge scalar values', () => {
     assert.ok(paths.includes('a'));
     assert.ok(paths.includes('b'));
     assert.ok(paths.includes('c'));
+  });
+});
+
+// ─────────────────────────────────────────────
+// parsePath
+// ─────────────────────────────────────────────
+
+describe('parsePath', () => {
+  test('simple dot path', () => {
+    assert.deepEqual(parsePath('a.b.c'), ['a', 'b', 'c']);
+  });
+
+  test('single segment (no dots or brackets)', () => {
+    assert.deepEqual(parsePath('replicaCount'), ['replicaCount']);
+  });
+
+  test('array index bracket notation', () => {
+    assert.deepEqual(parsePath('arr[0]'), ['arr', '0']);
+  });
+
+  test('nested array index', () => {
+    assert.deepEqual(parsePath('controller.extraArgs[2]'), ['controller', 'extraArgs', '2']);
+  });
+
+  test('quoted dotted YAML key at root', () => {
+    assert.deepEqual(parsePath('["argocd.argoproj.io/sync-options"]'), ['argocd.argoproj.io/sync-options']);
+  });
+
+  test('quoted dotted YAML key nested', () => {
+    assert.deepEqual(parsePath('annotations["argocd.argoproj.io/sync-options"]'), ['annotations', 'argocd.argoproj.io/sync-options']);
+  });
+
+  test('quoted key with escaped double-quote inside', () => {
+    assert.deepEqual(parsePath('meta["key\\"q"]'), ['meta', 'key"q']);
+  });
+
+  test('mixed: dot path then bracket index then quoted key', () => {
+    assert.deepEqual(parsePath('a["x.y"][0].b'), ['a', 'x.y', '0', 'b']);
+  });
+
+  test('empty path returns empty array', () => {
+    assert.deepEqual(parsePath(''), []);
+  });
+});
+
+// ─────────────────────────────────────────────
+// parentPathOf
+// ─────────────────────────────────────────────
+
+describe('parentPathOf', () => {
+  test('simple dot path returns prefix before last dot', () => {
+    assert.equal(parentPathOf('a.b.c'), 'a.b');
+  });
+
+  test('single segment returns null', () => {
+    assert.equal(parentPathOf('replicaCount'), null);
+  });
+
+  test('array index removes bracket segment', () => {
+    assert.equal(parentPathOf('arr[0]'), 'arr');
+  });
+
+  test('quoted dotted key removes bracket segment', () => {
+    assert.equal(parentPathOf('annotations["argocd.argoproj.io/sync-options"]'), 'annotations');
+  });
+
+  test('root-level quoted key returns null', () => {
+    assert.equal(parentPathOf('["argocd.argoproj.io/sync-options"]'), null);
+  });
+
+  test('dots inside quoted key are not treated as separators', () => {
+    // The dot in "x.y" must NOT be used as the split point
+    assert.equal(parentPathOf('a["x.y"]'), 'a');
+  });
+
+  test('nested: two bracket levels', () => {
+    assert.equal(parentPathOf('a["x.y"][0]'), 'a["x.y"]');
+  });
+});
+
+// ─────────────────────────────────────────────
+// flatten: dotted YAML keys
+// ─────────────────────────────────────────────
+
+describe('flatten: dotted YAML keys', () => {
+  test('key with dot gets ["key"] bracket encoding', () => {
+    const out = [];
+    flatten({'argocd.argoproj.io/sync-options': 'Prune=false'}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, '["argocd.argoproj.io/sync-options"]');
+    assert.equal(out[0].val, 'Prune=false');
+  });
+
+  test('nested dotted key gets bracket notation under parent', () => {
+    const out = [];
+    flatten({annotations: {'argocd.argoproj.io/sync-options': 'Prune=false'}}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, 'annotations["argocd.argoproj.io/sync-options"]');
+  });
+
+  test('normal keys still use dot notation', () => {
+    const out = [];
+    flatten({image: {tag: 'latest'}}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, 'image.tag');
+  });
+
+  test('key with bracket character gets quoted encoding', () => {
+    const out = [];
+    flatten({'key[0]': 'val'}, '', out);
+    assert.equal(out.length, 1);
+    assert.equal(out[0].path, '["key[0]"]');
+  });
+
+  test('round-trip: getNestedVal reads back value written by setNestedPath for dotted key', () => {
+    const obj = {annotations: {'argocd.argoproj.io/sync-options': 'Prune=false'}};
+    const out = [];
+    flatten(obj, '', out);
+    const path = out[0].path; // 'annotations["argocd.argoproj.io/sync-options"]'
+    assert.equal(getNestedVal(obj, path), 'Prune=false');
+  });
+});
+
+// ─────────────────────────────────────────────
+// setNestedPath: dotted YAML keys
+// ─────────────────────────────────────────────
+
+describe('setNestedPath: dotted YAML keys', () => {
+  test('writes to dotted YAML key via bracket notation', () => {
+    const obj = {annotations: {'argocd.argoproj.io/sync-options': 'Prune=false'}};
+    setNestedPath(obj, 'annotations["argocd.argoproj.io/sync-options"]', 'Prune=true');
+    assert.equal(obj.annotations['argocd.argoproj.io/sync-options'], 'Prune=true');
+  });
+
+  test('writes root-level dotted YAML key', () => {
+    const obj = {'argocd.argoproj.io/sync-options': 'old'};
+    setNestedPath(obj, '["argocd.argoproj.io/sync-options"]', 'new');
+    assert.equal(obj['argocd.argoproj.io/sync-options'], 'new');
+  });
+
+  test('does NOT delete legitimate dotted YAML key when writing sibling', () => {
+    const obj = {annotations: {'argocd.argoproj.io/sync-options': 'keep', 'other': 'val'}};
+    setNestedPath(obj, 'annotations.other', 'changed');
+    // dotted key must still exist
+    assert.equal(obj.annotations['argocd.argoproj.io/sync-options'], 'keep');
+  });
+});
+
+// ─────────────────────────────────────────────
+// getNestedVal: dotted YAML keys
+// ─────────────────────────────────────────────
+
+describe('getNestedVal: dotted YAML keys', () => {
+  test('reads dotted YAML key via bracket notation', () => {
+    const obj = {annotations: {'argocd.argoproj.io/sync-options': 'Prune=false'}};
+    assert.equal(getNestedVal(obj, 'annotations["argocd.argoproj.io/sync-options"]'), 'Prune=false');
+  });
+
+  test('reads root-level dotted key', () => {
+    const obj = {'argocd.argoproj.io/sync-options': 'yes'};
+    assert.equal(getNestedVal(obj, '["argocd.argoproj.io/sync-options"]'), 'yes');
+  });
+
+  test('returns undefined for missing dotted key path', () => {
+    const obj = {annotations: {}};
+    assert.equal(getNestedVal(obj, 'annotations["missing.key"]'), undefined);
   });
 });
 
