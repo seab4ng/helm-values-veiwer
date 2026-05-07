@@ -1350,6 +1350,8 @@
     }
     toast(`Removed "${displayName(key)}"`);
     updateBatchBar();
+    updateDiffBadge();
+    updateUndoBtn();
     renderTree();
     renderValues();
   }
