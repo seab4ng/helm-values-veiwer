@@ -119,6 +119,10 @@ const HelmLib=(function(){
       if (cur == null || typeof cur !== 'object') return;
       // Remove stale "name[n]" literal keys written by old code that lacked bracket support
       if (/^\d+$/.test(keys[i + 1])) delete cur[keys[i] + '[' + keys[i + 1] + ']'];
+      // Remove dotted-key shortcuts that collapse to the same path as the nested structure
+      // e.g. if cm has key "statusbadge.enabled" and we're writing cm.statusbadge.enabled,
+      // the shortcut key is a collision — delete it so flatten only sees the real nested value.
+      delete cur[keys.slice(i).join('.')];
       if (cur[keys[i]] == null) cur[keys[i]] = {};
       cur = cur[keys[i]];
     }
@@ -138,6 +142,26 @@ const HelmLib=(function(){
         delete obj[key]; // stale literal bracket key; real data lives in the array
       } else {
         cleanStaleBracketKeys(obj[key]);
+      }
+    }
+  }
+
+  // Remove dotted-key shortcuts that conflict with properly nested structures.
+  // e.g. if obj has both "statusbadge.enabled": false AND statusbadge: {enabled: x},
+  // the dotted key is a leftover from old code — delete it so only the nested value remains.
+  function cleanDottedKeyCollisions(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj)) { obj.forEach(cleanDottedKeyCollisions); return; }
+    for (const key of Object.keys(obj)) {
+      if (key.includes('.')) {
+        // key like "statusbadge.enabled" — check if the nested path also exists
+        const parts = key.split('.');
+        let cur = obj;
+        let nested = true;
+        for (const p of parts) { if (cur == null || typeof cur !== 'object' || !(p in cur)) { nested = false; break; } cur = cur[p]; }
+        if (nested) delete obj[key]; // nested path exists — dotted key is stale collision
+      } else {
+        cleanDottedKeyCollisions(obj[key]);
       }
     }
   }
@@ -171,6 +195,6 @@ const HelmLib=(function(){
     return String(origVal === null ? 'null' : origVal) !== String(currentVal === null ? 'null' : currentVal);
   }
 
-  return {flatten,esc,highlight,displayName,dirOf,buildChartTree,setNestedPath,coerceValue,getNestedVal,valChanged,cleanStaleBracketKeys};
+  return {flatten,esc,highlight,displayName,dirOf,buildChartTree,setNestedPath,coerceValue,getNestedVal,valChanged,cleanStaleBracketKeys,cleanDottedKeyCollisions};
 })();
 if(typeof module!=='undefined') module.exports=HelmLib;

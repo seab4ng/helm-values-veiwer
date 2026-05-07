@@ -1,7 +1,7 @@
 'use strict';
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged, cleanStaleBracketKeys} = require('../app/lib.js');
+const {flatten, esc, highlight, displayName, dirOf, buildChartTree, setNestedPath, coerceValue, getNestedVal, valChanged, cleanStaleBracketKeys, cleanDottedKeyCollisions} = require('../app/lib.js');
 
 // ─────────────────────────────────────────────
 // flatten
@@ -574,6 +574,36 @@ test('cleanStaleBracketKeys: is a no-op on clean objects', () => {
   cleanStaleBracketKeys(obj);
   assert.deepEqual(obj.global.env, ['a', 'b']);
   assert.equal(obj.global.other, 'val');
+});
+
+// ─────────────────────────────────────────────
+// cleanDottedKeyCollisions
+// ─────────────────────────────────────────────
+
+test('cleanDottedKeyCollisions: removes dotted key when nested path also exists', () => {
+  const obj = {configs: {cm: {'statusbadge.enabled': false, statusbadge: {enabled: 'trrr'}}}};
+  cleanDottedKeyCollisions(obj);
+  assert.equal(obj.configs.cm['statusbadge.enabled'], undefined);
+  assert.equal(obj.configs.cm.statusbadge.enabled, 'trrr');
+});
+
+test('cleanDottedKeyCollisions: leaves dotted key when nested path does NOT exist', () => {
+  const obj = {configs: {'statusbadge.enabled': false}};
+  cleanDottedKeyCollisions(obj);
+  assert.equal(obj.configs['statusbadge.enabled'], false); // kept — no conflict
+});
+
+test('cleanDottedKeyCollisions: is no-op on clean objects', () => {
+  const obj = {configs: {cm: {statusbadge: {enabled: false}}}};
+  cleanDottedKeyCollisions(obj);
+  assert.equal(obj.configs.cm.statusbadge.enabled, false);
+});
+
+test('setNestedPath: deletes dotted-key shortcut when writing nested path', () => {
+  const obj = {cm: {'statusbadge.enabled': false}};
+  setNestedPath(obj, 'cm.statusbadge.enabled', 'NEW');
+  assert.equal(obj.cm['statusbadge.enabled'], undefined); // stale dotted key gone
+  assert.equal(obj.cm.statusbadge.enabled, 'NEW');
 });
 
 // ─────────────────────────────────────────────
